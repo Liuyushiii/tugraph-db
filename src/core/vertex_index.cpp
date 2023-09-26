@@ -33,7 +33,11 @@ VertexIndexIterator::VertexIndexIterator(VertexIndex* idx, Transaction* txn, KvT
     if (!it_.IsValid() || KeyOutOfRange()) {
         return;
     }
+    // 将index包含的所有的vid导入iv_
     LoadContentFromIt();
+    
+    FMA_LOG() << "key end: " << key_end_.Data() << ", vid count: " << iv_.GetVidCount();
+    
 }
 
 VertexIndexIterator::VertexIndexIterator(VertexIndex* idx, KvTransaction* txn, KvTable& table,

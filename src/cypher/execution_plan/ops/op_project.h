@@ -83,6 +83,7 @@ class Project : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_project)";
         OpResult res = OP_OK;
         std::shared_ptr<Record> r;
         if (!children.empty()) {

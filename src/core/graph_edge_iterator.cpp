@@ -22,6 +22,8 @@ template <PackType ET>
 EdgeIterator<ET>::EdgeIterator(::lgraph::Transaction* txn, KvTable& table, const EdgeUid& euid,
                                bool closest)
     : IteratorBase(txn), it_(txn->GetTxn(), table), impl_(it_) {
+
+    FMA_LOG() << "constructor of EdgeIterator is invoked (cpp): " << euid.ToString();
     impl_.Goto(euid, closest);
 }
 

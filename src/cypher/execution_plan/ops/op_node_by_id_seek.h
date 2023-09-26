@@ -66,6 +66,7 @@ class NodeByIdSeek : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_node_by_id_seek)";
         // 记得每次都要设为-1！！！！！
         node_->SetVid(-1);
 

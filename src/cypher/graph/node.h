@@ -107,10 +107,15 @@ class Node {
      **/
     void PushVid(lgraph::VertexId vid) {
         vid_ = vid;
-        if (!it_.IsValid()) return;
+        if (!it_.IsValid()) {
+            FMA_LOG() << "!it_.IsValid()";
+            return;
+        }
         if (vid_ < 0) {
+            FMA_LOG() << "it_.FreeIter();";
             it_.FreeIter();
         } else {
+            FMA_LOG() << "it_.Goto " << vid;
             it_.Goto(vid);
         }
     }

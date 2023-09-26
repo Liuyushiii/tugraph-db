@@ -55,12 +55,16 @@ static void BuildQueryGraph(const QueryPart &part, PatternGraph &graph) {
     /* Introduce argument nodes & relationships */
     // TODO(anyone) revisit when arguments also in MATCH
     int invisible_node_idx = 0;
+    FMA_LOG() << "size of symbol table: " << graph.symbol_table.symbols.size();
     for (auto &a : graph.symbol_table.symbols) {
+        FMA_LOG() << "  a: " << a.first;
         if (a.second.scope == SymbolNode::ARGUMENT) {
             if (a.second.type == SymbolNode::NODE && graph.GetNode(a.first).Empty()) {
+                FMA_LOG() << "  name: " << a.first << ", type: " << "NODE";
                 graph.AddNode("", a.first, Node::ARGUMENT);
             } else if (a.second.type == SymbolNode::RELATIONSHIP &&
                        graph.GetRelationship(a.first).Empty()) {
+                FMA_LOG() << "  name: " << a.first << ", type: " << "RELATIONSHIP";
                 auto src_alias = std::string(INVISIBLE).append("NODE_").append(
                     std::to_string(invisible_node_idx++));
                 auto dst_alias = std::string(INVISIBLE).append("NODE_").append(
@@ -510,7 +514,9 @@ void ExecutionPlan::_BuildExpandOps(const parser::QueryPart &part, PatternGraph 
      * MATCH (a {name:'Dennis Quaid'}) WITH a,['London','Houston'] AS cids
      * UNWIND cids AS cid MATCH (c {name:cid})<-[]-(a) RETURN a,count(c)
      */
+    FMA_LOG() << "size of pattern_graph.GetNodes(): " << pattern_graph.GetNodes().size();
     for (auto &n : pattern_graph.GetNodes()) {
+        FMA_LOG() << "  id: " << n.ID() << ", label: " << n.Label() << ", alias: " <<  n.Alias();
         auto &prop = n.Prop();
         if (n.derivation_ != Node::CREATED && prop.type == Property::VARIABLE) {
             auto it = pattern_graph.symbol_table.symbols.find(prop.value_alias);
@@ -901,6 +907,7 @@ void ExecutionPlan::_PlaceFilterOps(const parser::QueryPart &part, OpBase *&root
     if (part.match_clause) {
         auto &where_expr = std::get<2>(*part.match_clause);
         if (where_expr.type == Expression::FILTER) {
+            FMA_LOG() << "filter ops: " << where_expr.ToString();
             _PlaceFilter(where_expr.Filter(), root);
             _MergeFilter(root);
         }
@@ -947,6 +954,7 @@ void ExecutionPlan::_PlaceFilter(std::shared_ptr<lgraph::Filter> f, OpBase *&roo
      * a. constant filter: where 1 = 2
      * b. invalid args: where type(4) = 'ACTED_IN'  */
     if (f->Alias().empty()) {
+        FMA_LOG() << "f->Alias() is empty";
         // find the leaf op
         OpBase *leaf_op = root;
         while (!leaf_op->children.empty()) {
@@ -956,10 +964,14 @@ void ExecutionPlan::_PlaceFilter(std::shared_ptr<lgraph::Filter> f, OpBase *&roo
         leaf_op->parent->PushInBetween(node_filter);
     } else {
         // If a filter's LogicalOp is AND, do its subtrees separately
+        // 如果f包含多个条件，则递归执行
         if (f->LogicalOp() == lgraph::LogicalOp::LBR_AND) {
+            FMA_LOG() << "f's LogicalOp is AND";
             _PlaceFilter(f->Left(), root);
             _PlaceFilter(f->Right(), root);
         } else {
+            FMA_LOG() << "f's LogicalOp is not AND";
+            // 对单个where调用_PlaceFilterToNode
             if (!_PlaceFilterToNode(f, root)) {
                 if (f->ContainAlias(root->modifies)) {
                     /* NOTE: Re-align the alias_id_map for this filter later.  */
@@ -991,9 +1003,11 @@ bool ExecutionPlan::_PlaceFilterToNode(std::shared_ptr<lgraph::Filter> &f, OpBas
     // check if rit modifies at least one of f's aliases
     bool containModifies = false;
     for (auto rit = node->children.rbegin(); rit != node->children.rend(); ++rit) {
+        FMA_LOG() << "name of rit: " << (*rit)->name;
         for (auto alias : f->Alias())
             if (std::find((*rit)->modifies.begin(), (*rit)->modifies.end(), alias) !=
                 (*rit)->modifies.end()) {
+                FMA_LOG() << "  " << alias << " will be modified";
                 containModifies = true;
                 break;
             }
@@ -1008,6 +1022,7 @@ bool ExecutionPlan::_PlaceFilterToNode(std::shared_ptr<lgraph::Filter> &f, OpBas
         }
     // do the filter at rit if containModifies and allModified are true
     if (containModifies && allModified) {
+        FMA_LOG() << "containModifies && allModified";
         OpBase *node_filter = new OpFilter(f);
         OpBase *insert = node, *current = node;
         while (current) {
@@ -1020,8 +1035,10 @@ bool ExecutionPlan::_PlaceFilterToNode(std::shared_ptr<lgraph::Filter> &f, OpBas
         insert->PushInBetween(node_filter);
         return true;
     } else {
+        FMA_LOG() << "not contain modify";
         // if this filter cannot be placed at rit, try to place this filter
         // to its children
+        // 如果不包含任何修改操作，则在下一层继续执行
         for (auto rit = node->children.rbegin(); rit != node->children.rend(); ++rit) {
             if (_PlaceFilterToNode(f, *rit)) {
                 return true;
@@ -1050,6 +1067,7 @@ OpBase *ExecutionPlan::BuildPart(const parser::QueryPart &part, int part_id) {
         _BuildClause(clause, part, pattern_graph, segment_root);
     }
 
+    // 根据Where构造并插入过滤器
     _PlaceFilterOps(part, segment_root);
 
     return segment_root;
@@ -1186,6 +1204,7 @@ OpBase *ExecutionPlan::BuildSgl(const parser::SglQuery &stmt, size_t parts_offse
     OpBase *sgl_root = nullptr;
     std::vector<OpBase *> segments;
     for (int i = 0; i < (int)stmt.parts.size(); i++) {
+        // 对每个SglQuery的每个part调用BuildPart
         auto segment = BuildPart(stmt.parts[i], parts_offset + i);
         segments.emplace_back(segment);
     }
@@ -1261,8 +1280,10 @@ void ExecutionPlan::Build(const std::vector<parser::SglQuery> &stmt, parser::Cmd
     size_t parts_size = 0;
     for (auto &s : stmt) parts_size += s.parts.size();
     _pattern_graphs.resize(parts_size);
+    // 对每个SglQuery调用BuildSgl
     _root = BuildSgl(stmt[0], 0);
     size_t parts_off = stmt[0].parts.size();
+    FMA_LOG() << "size of stmt: " << stmt.size();
     for (size_t i = 1; i < stmt.size(); i++) {
         auto sgl = BuildSgl(stmt[i], parts_off);
         parts_off += stmt[i].parts.size();
@@ -1354,6 +1375,9 @@ int ExecutionPlan::Execute(RTContext *ctx) {
         OpBase::OpResult res;
         do {
             res = _root->Consume(ctx);
+
+            FMA_LOG() << "root op result: " << res << " (" << OpBase::OP_OK << " for OK)";
+            FMA_LOG() << "==============================";
 #ifndef NDEBUG
             FMA_DBG() << "root op result: " << res << " (" << OpBase::OP_OK << " for OK)";
 #endif

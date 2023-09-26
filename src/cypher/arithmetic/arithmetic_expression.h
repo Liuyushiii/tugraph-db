@@ -348,9 +348,12 @@ struct ArithOperandNode {
     void RealignAliasId(const SymbolTable &sym_tab);
 
     Entry Evaluate(RTContext *ctx, const Record &record) const {
+        // FMA_LOG() << "Evaluate is invoked";
         if (type == AR_OPERAND_CONSTANT) {
+            // FMA_LOG() << "AR_OPERAND_CONSTANT";
             return Entry(constant);
         } else if (type == AR_OPERAND_VARIADIC) {
+            // FMA_LOG() << "AR_OPERAND_VARIADIC";
             const auto &entry = record.values[variadic.alias_idx];
             switch (entry.type) {
             case Entry::NODE:

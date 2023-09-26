@@ -72,6 +72,7 @@ class NodeByLabelScan : public OpBase {
          * - otherwise, set node to -1 in case mistaken for the
          *   vertex to be valid.
          * */
+        FMA_LOG() << "RealConsume (op_node_by_label_scan)";
         node_->SetVid(-1);
         if (!it_ || !it_->IsValid()) return OP_DEPLETED;
         if (!consuming_) {

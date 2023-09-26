@@ -65,6 +65,7 @@ class AllNodeScan : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_all_node_scan)";
         /* Always set node's vid to -1:
          * - if found a new vertex ok, pull vid when use it;
          * - otherwise, set node to -1 in case mistaken for the

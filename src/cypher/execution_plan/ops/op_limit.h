@@ -39,6 +39,7 @@ class Limit : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_limit)";
         // Have we reached our limit?
         if (consumed_ >= limit_) return OP_DEPLETED;
         // Consume a single record.

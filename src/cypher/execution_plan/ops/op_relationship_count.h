@@ -272,6 +272,7 @@ class RelationshipCount : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_relationship_count)";
         if (state == StreamDepleted) return OP_DEPLETED;
         int64_t num_edges = 0;
         lgraph::LabelId start_lid = 0, nbr_lid = 0;

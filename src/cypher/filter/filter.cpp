@@ -136,6 +136,7 @@ TestExists::~TestExists() {
 }
 
 bool TestExists::DoFilter(cypher::RTContext *ctx, const cypher::Record &record) {
+    FMA_LOG() << "TestExists::DoFilter in filter.cpp";
     if (!nested_plan_) {
         auto value = property_.Evaluate(ctx, record);
         return !value.IsNull();
@@ -155,6 +156,7 @@ bool TestExists::DoFilter(cypher::RTContext *ctx, const cypher::Record &record) 
 }
 
 bool StringFilter::DoFilter(cypher::RTContext *ctx, const cypher::Record &record) {
+    FMA_LOG() << "DoFilter in filter.cpp";
     auto left = lhs.Evaluate(ctx, record);
     auto right = rhs.Evaluate(ctx, record);
     if (!left.constant.IsString() || !right.constant.IsString()) {

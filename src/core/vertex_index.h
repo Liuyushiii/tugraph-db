@@ -69,6 +69,7 @@ class VertexIndexIterator;
 
 /**
  * An VertexIndexValue packs multiple vids into a single value.
+ * 是一个将多个顶点标识符（vids）打包到单个值中的数据结构。
  */
 class VertexIndexValue {
     /**
@@ -348,6 +349,7 @@ class VertexIndexIterator : public ::lgraph::IteratorBase {
      * \return  True if it succeeds, otherwise false.
      */
     bool Next() {
+        FMA_LOG() << "Next() of VertexIndexIterator is invoked";
         // if we haven't reach the end of the current VertexIndexValue,
         // just move forward
         if (!unique_ && pos_ < iv_.GetVidCount() - 1) {

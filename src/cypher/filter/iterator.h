@@ -255,6 +255,23 @@ class VIter {
         _vit = nullptr;
     }
 
+    std::string GetIteratorType(){
+        if (_type == VERTEX_ITER){
+            return "VERTEX_ITER";
+        }
+        else if (_type == INDEX_ITER){
+            return "INDEX_ITER";
+        }
+        else if (_type == WEAK_INDEX_ITER){
+            return "WEAK_INDEX_ITER";
+        }
+        else if (_type == LABEL_VERTEX_ITER){
+            return "LABEL_VERTEX_ITER";
+        }
+        else
+            return "NA";
+    }
+
     void Initialize(lgraph::Transaction *txn, IteratorType type) {
         FreeIter();
         _txn = txn;
@@ -283,6 +300,8 @@ class VIter {
                     const std::string &field, const FieldData &key_start,
                     const FieldData &key_end) {
         FreeIter();
+        FMA_LOG() << "Index Iterator Initialization: ";
+        FMA_LOG() << "label: " << label << " field: " << field << " key_start: " << key_start.ToString() << " key_end: " << key_end.ToString();
         _txn = txn;
         _type = type;
         if (_type == INDEX_ITER) {
@@ -544,6 +563,7 @@ class VIter {
 template <typename EIT>
 class TypeEdgeIterator {
     lgraph::Transaction *_txn = nullptr;
+    // OutEdgeIterator
     EIT *_eit = nullptr;
     /* Unlike vertex, if we’d like to describe some data such that
      * the relationship could have any one of a set of types, then
@@ -591,6 +611,12 @@ class TypeEdgeIterator {
             }
         }
         return _valid;
+    }
+
+    // new append
+    bool GotoVersion(lgraph::VertexId vid, int version) {
+        FMA_LOG() << "new Goto is invoked";
+        return _eit->GotoVersion(EdgeUid(vid,0,0,0,0), true, version);
     }
 
     bool IsValid() const { return _valid; }
@@ -795,15 +821,30 @@ class EIter {
         }
     }
 
+    // new append
+    bool GotoVersion(lgraph::VertexId vid, int version) {
+        switch (_type) {
+            case TYPE_OUT_EDGE:
+                FMA_LOG() << "********************************************";
+                return (_toeit && _toeit->GotoVersion(vid, version));
+            default:
+                return false;
+        }
+    }
+
     bool Next() {
         switch (_type) {
         case OUT_EDGE:
+            FMA_LOG() << "Next() : OUT_EDGE";
             return (_oeit && _oeit->Next());
         case IN_EDGE:
+            FMA_LOG() << "Next() : IN_EDGE";
             return (_ieit && _ieit->Next());
         case TYPE_OUT_EDGE:
+            FMA_LOG() << "Next() : TYPE_OUT_EDGE";
             return (_toeit && _toeit->Next());
         case TYPE_IN_EDGE:
+            FMA_LOG() << "Next() : TYPE_IN_EDGE";
             return (_tieit && _tieit->Next());
         case BI_EDGE:
             if (_is_out) {
@@ -940,6 +981,7 @@ class EIter {
         }
     }
 
+    // 获取邻居顶点的vid
     lgraph::VertexId GetNbr(cypher::ExpandTowards direction) const {
         switch (direction) {
         case cypher::FORWARD:

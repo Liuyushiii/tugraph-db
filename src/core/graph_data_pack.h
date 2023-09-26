@@ -109,6 +109,7 @@ class KeyPacker {
         return r;
     }
 
+    // 将一个 int64_t 类型的整数 i 的前 N 个字节写入到指定的内存位置
     template <int N>
     static inline void SetNByteIntId(void* p, int64_t i) {
         uint8_t* src = (uint8_t*)&i;
@@ -236,6 +237,18 @@ class KeyPacker {
      * @return  The key.
      */
     static Value CreateEdgeKey(PackType et, EdgeUid euid) {
+        Value v(EDGE_KEY_SIZE);
+        SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data(), euid.src);
+        SetPackType(v.Data() + PT_OFF, et);
+        SetNByteIntId<::lgraph::_detail::LID_SIZE>(v.Data() + LID_OFF, euid.lid);
+        SetNByteIntId<::lgraph::_detail::TID_SIZE>(v.Data() + TID_OFF, euid.tid);
+        SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF, euid.dst);
+        SetNByteIntId<::lgraph::_detail::EID_SIZE>(v.Data() + EID_OFF, euid.eid);
+        return v;
+    }
+
+    // new append
+    static Value CreateEdgeKeyVersion(PackType et, EdgeUid euid) {
         Value v(EDGE_KEY_SIZE);
         SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data(), euid.src);
         SetPackType(v.Data() + PT_OFF, et);

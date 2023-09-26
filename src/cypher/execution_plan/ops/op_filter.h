@@ -36,12 +36,14 @@ class OpFilter : public OpBase {
  public:
     explicit OpFilter(const std::shared_ptr<lgraph::Filter> &filter)
         : OpBase(OpType::FILTER, "Filter"), filter_(filter) {
+        FMA_LOG() << "OpFilter is constructed";
         _state = FilterUninitialized;
     }
 
     const std::shared_ptr<lgraph::Filter> &Filter() const { return filter_; }
 
     OpResult Initialize(RTContext *ctx) override {
+        FMA_LOG() << "OpFilter is initialized";
         CYPHER_THROW_ASSERT(!children.empty());
         OpBase *child = children[0];
         auto res = child->Initialize(ctx);
@@ -52,6 +54,7 @@ class OpFilter : public OpBase {
     }
 
     void InitializeFilter(std::shared_ptr<lgraph::Filter> root) {
+        FMA_LOG() << "InitializeFilter is called";
         if (root->Type() == lgraph::Filter::TEST_IN_FILTER) {
             auto tif = std::dynamic_pointer_cast<lgraph::TestInFilter>(root);
             LocateAndSetProducer(this, tif);
@@ -65,6 +68,7 @@ class OpFilter : public OpBase {
     }
 
     bool LocateAndSetProducer(OpBase *op, std::shared_ptr<lgraph::TestInFilter> tif) {
+        FMA_LOG() << "LocateAndSetProducer is called";
         bool allModified;
         for (auto child : op->children) {
             allModified = true;
@@ -98,6 +102,7 @@ class OpFilter : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_filter)";
         OpResult res;
         OpBase *child = children[0];
         while (true) {

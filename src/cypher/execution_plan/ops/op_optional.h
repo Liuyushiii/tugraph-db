@@ -35,6 +35,7 @@ class Optional : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_optional)";
         CYPHER_THROW_ASSERT(!children.empty());
         if (state == StreamDepleted) return OP_DEPLETED;
         auto &child = children[0];

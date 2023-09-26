@@ -78,6 +78,7 @@ class CartesianProduct : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_cartesian_product)";
         if (init) {
             init = false;
             for (auto child : children) {

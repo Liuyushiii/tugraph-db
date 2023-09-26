@@ -43,26 +43,40 @@ class ExpandAll : public OpBase {
             break;
         }
         eit_->Initialize(ctx->txn_->GetTxn().get(), iter_type, start_->PullVid(), types);
+
+        // FMA_LOG() << eit_->Goto("test go to", start_->PullVid()+1);
     }
 
+    // 使用过滤器
     bool _CheckToSkipEdgeFilter(RTContext *ctx) const {
         // if the query has edge_filter, filter before node_expand
         return edge_filter_ && !edge_filter_->DoFilter(ctx, *children[0]->record);
     }
 
     bool _CheckToSkipEdge(RTContext *ctx) const {
+        // pattern_graph_->VisitedEdges().Contains(*eit_)： 当前边已经被访问过了
+        // _CheckToSkipEdgeFilter(ctx)：利用过滤器过滤
         return eit_->IsValid() &&
                (pattern_graph_->VisitedEdges().Contains(*eit_) || _CheckToSkipEdgeFilter(ctx) ||
                 (expand_into_ && eit_->GetNbr(expand_direction_) != neighbor_->PullVid()));
     }
 
     bool _FilterNeighborLabel(RTContext *ctx) {
-        if (neighbor_->Label().empty()) return true;
+        if (neighbor_->Label().empty()) {
+            FMA_LOG() << "label of neighbor is empty";
+            return true;
+        }
+        FMA_LOG() << "label of neighbor: " << neighbor_->Label();
+        FMA_LOG() << "current eit: " << eit_->GetSrc() << " - " << eit_->GetDst();
+        // 先通过 eit_->GetNbr(expand_direction_) 获取邻居点的vid
+        // 再通过 GetVertexIterator 构建邻居顶点的迭代器，包含了一个go to方法的调用
         auto nbr_it = ctx->txn_->GetTxn()->GetVertexIterator(eit_->GetNbr(expand_direction_));
+        FMA_LOG() << "Vid in nbr_it: "<< nbr_it.GetId();
         while (ctx->txn_->GetTxn()->GetVertexLabel(nbr_it) != neighbor_->Label()) {
             eit_->Next();
             if (!eit_->IsValid()) return false;
             nbr_it.Goto(eit_->GetNbr(expand_direction_));
+            FMA_LOG() << "Vid in nbr_it: "<< nbr_it.GetId();
             CYPHER_THROW_ASSERT(nbr_it.IsValid());
         }
         return true;
@@ -77,16 +91,27 @@ class ExpandAll : public OpBase {
     }
 
     OpResult Next(RTContext *ctx) {
+        FMA_LOG() << "NEXT() in op_expand_all start";
         // Reset iterators
         if (state_ == ExpandAllResetted) {
             /* Start node iterator may be invalid, such as when the start is an argument
              * produced by OPTIONAL MATCH.  */
-            if (start_->PullVid() < 0) return OP_REFRESH;
+            FMA_LOG() << "vid in op_expand_all: " << start_->PullVid();
+            if (start_->PullVid() < 0) 
+            {
+                return OP_REFRESH;
+            }
             _InitializeEdgeIter(ctx);
+            FMA_LOG() << "===============test===============";
+            eit_->GotoVersion(start_->PullVid(), 0);
+            FMA_LOG() << "===============test===============";
             while (_CheckToSkipEdge(ctx)) {
+                FMA_LOG() << "_CheckToSkipEdge";
                 eit_->Next();
             }
-            if (!eit_->IsValid() || !_FilterNeighborLabel(ctx)) return OP_REFRESH;
+            if (!eit_->IsValid() || !_FilterNeighborLabel(ctx)) {
+                return OP_REFRESH;
+            }
             /* When relationship is undirected, GetNbr() will get src for out_edge_iterator
              * and dst for in_edge_iterator.  */
             neighbor_->PushVid(eit_->GetNbr(expand_direction_));
@@ -100,7 +125,9 @@ class ExpandAll : public OpBase {
         do {
             eit_->Next();
         } while (_CheckToSkipEdge(ctx));
-        if (!eit_->IsValid() || !_FilterNeighborLabel(ctx)) return OP_REFRESH;
+        if (!eit_->IsValid() || !_FilterNeighborLabel(ctx)) {
+            return OP_REFRESH;
+        }
         neighbor_->PushVid(eit_->GetNbr(expand_direction_));
         pattern_graph_->VisitedEdges().Add(*eit_);
         _DumpForDebug();
@@ -138,6 +165,7 @@ class ExpandAll : public OpBase {
           pattern_graph_(pattern_graph),
           edge_filter_(edge_filter) {
         CYPHER_THROW_ASSERT(start && neighbor && relp);
+        // 构造边迭代器
         eit_ = relp->ItRef();
         modifies.emplace_back(neighbor_->Alias());
         modifies.emplace_back(relp_->Alias());
@@ -162,6 +190,33 @@ class ExpandAll : public OpBase {
     }
 
     OpResult Initialize(RTContext *ctx) override {
+        FMA_LOG() << "initialization of op_expand_all is invoked";
+        // 判断 edge_filter 是否为空
+        if (edge_filter_){
+            FMA_LOG() << "filter is not null";
+            // 判断 filter 类型是否为 RANGE_FILTER
+            if (edge_filter_->Type() == lgraph::Filter::Type::RANGE_FILTER){
+                // 类型转换
+                auto range_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_);
+                // ae_right: 常量
+                auto ae_right = range_filter->GetAeRight();
+                if (ae_right.type == ArithExprNode::AR_EXP_OPERAND){
+                    // FMA_LOG() << ae_right.operand.constant;
+                    FMA_LOG() << "AR_EXP_OPERAND";
+                    FMA_LOG() << ae_right.operand.constant.ToString();
+                }
+                else if (ae_right.type == ArithExprNode::AR_EXP_OP){
+                    // FMA_LOG() << ae_right.operand.constant;
+                    FMA_LOG() << "AR_EXP_OP";
+                }
+                else{
+                    // FMA_LOG() << ae_right.operand.constant;
+                    FMA_LOG() << "AR_AST_EXP";
+                }
+            }
+            // auto _logical_op = edge_filter_->LogicalOp();
+            // FMA_LOG() << "logical op: " << _logical_op;
+        }
         CYPHER_THROW_ASSERT(!children.empty());
         auto child = children[0];
         auto res = child->Initialize(ctx);
@@ -177,6 +232,7 @@ class ExpandAll : public OpBase {
     }
 
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_expand_all)";
         CYPHER_THROW_ASSERT(!children.empty());
         auto child = children[0];
         while (state_ == ExpandAllUninitialized || Next(ctx) == OP_REFRESH) {

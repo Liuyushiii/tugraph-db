@@ -106,6 +106,7 @@ class NodeIndexSeekDynamic : public OpBase {
          * - otherwise, set node to -1 in case mistaken for the
          *   vertex to be valid.
          * */
+        FMA_LOG() << "RealConsume (op_node_index_seek_dynamic)";
         node_->SetVid(-1);
         if (HandOff() == OP_OK) {
             return OP_OK;

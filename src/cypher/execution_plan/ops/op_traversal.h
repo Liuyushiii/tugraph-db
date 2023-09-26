@@ -59,6 +59,7 @@ class Traversal : public OpBase {
     } state_;
 
     bool DoFilter(lgraph_api::VertexIterator &vit, std::shared_ptr<lgraph::Filter> f) {
+        FMA_LOG() << "DoFileter in op_traversal";
         if (!f) {
             return true;
         }

@@ -418,21 +418,31 @@ class RangeFilter : public Filter {
     }
 
     bool DoFilter(cypher::RTContext *ctx, const cypher::Record &record) override {
+        FMA_LOG() << "DoFilter in filter.h is invoked";
         auto left = _ae_left.Evaluate(ctx, record);
         auto right = _ae_right.Evaluate(ctx, record);
+        FMA_LOG() << "record: " << record.ToString();
+        FMA_LOG() << "left: " << left.ToString();
+        FMA_LOG() << "right: " << right.ToString();
         if (left.type != right.type) return false;
         switch (_compare_op) {
         case lgraph::LBR_EQ:
+            FMA_LOG() << "LBR_EQ";
             return left == right;
         case lgraph::LBR_NEQ:
+            FMA_LOG() << "LBR_NEQ";
             return left != right;
         case lgraph::LBR_LT:
+            FMA_LOG() << "LBR_LT";
             return left < right;
         case lgraph::LBR_GT:
+            FMA_LOG() << "LBR_GT";
             return left > right;
         case lgraph::LBR_LE:
+            FMA_LOG() << "LBR_LE";
             return !(left > right);
         case lgraph::LBR_GE:
+            FMA_LOG() << "LBR_GE";
             return !(left < right);
         default:
             return false;

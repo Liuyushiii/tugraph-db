@@ -303,6 +303,8 @@ class SubProcess {
 namespace _detail {
 static const size_t VID_SIZE = 5;
 static const size_t EID_SIZE = 4;
+// new append
+static const size_t VERSION_SIZE = 0;
 static const size_t LID_BEGIN = 10;
 static const size_t TID_BEGIN = 12;
 static const size_t EID_BEGIN = 20;

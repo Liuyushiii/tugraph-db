@@ -171,21 +171,28 @@ void KvIterator::Close() {
     }
 }
 
+// 构造函数，初始化 KvIterator 对象
 KvIterator::KvIterator(KvTransaction& txn, KvTable& table, const Value& key, bool closest) {
-    ThrowIfTaskKilled();
-    txn_ = &txn;
-    table_ = &table;
+    ThrowIfTaskKilled();  // 检查任务是否已终止
+    txn_ = &txn;  // 关联事务对象
+    table_ = &table;  // 关联表对象
+
+    // 打开游标
     THROW_ON_ERR(mdb_cursor_open(txn.GetTxn(), table.GetDbi(), &cursor_));
+
+    // 如果事务非只读且是乐观事务，获取事务的增量数据
     if (!txn.read_only_ && txn.optimistic_) {
         delta_ = &txn.GetDelta(table);
     }
+
+    // 根据 key 是否为空定位到相应的键位置
     if (key.Empty()) {
-        GotoFirstKey();
+        GotoFirstKey();  // 定位到第一个键
     } else {
         if (closest)
-            GotoClosestKey(key);
+            GotoClosestKey(key);  // 定位到最接近给定 key 的键
         else
-            GotoKey(key);
+            GotoKey(key);  // 定位到指定 key
     }
 }
 
@@ -285,28 +292,36 @@ bool KvIterator::RefreshAfterModify() {
 }
 
 bool KvIterator::Next() {
-    ThrowIfTaskKilled();
+    ThrowIfTaskKilled();  // 检查任务是否被终止
+
+    // 如果事务为只读或非乐观事务
     if (txn_->read_only_ || !txn_->optimistic_) {
+        // 获取下一个键值对
         int ec = mdb_cursor_get(cursor_, &key_, &value_, MDB_NEXT);
-        valid_ = (ec == MDB_SUCCESS);
-        if (ec == MDB_SUCCESS || ec == MDB_NOTFOUND) return valid_;
-        THROW_ERR(ec);
+        valid_ = (ec == MDB_SUCCESS);  // 更新有效性标志
+        if (ec == MDB_SUCCESS || ec == MDB_NOTFOUND)
+            return valid_;  // 返回结果是否有效
+        THROW_ERR(ec);  // 抛出错误
     }
+
+    // 当前模式为反向遍历
     if (current_mode_ == DIR_BACKWARD) {
         if (current_cursor_ == IT_MAIN) {
-            while (Compare() > 0) MoveForwardDelta();
+            while (Compare() > 0) MoveForwardDelta();  // 移动到前一个主迭代器键
         } else {
-            while (Compare() < 0) MoveForwardMain();
+            while (Compare() < 0) MoveForwardMain();  // 移动到前一个副迭代器键
         }
-        current_mode_ = DIR_FORWARD;
+        current_mode_ = DIR_FORWARD;  // 更新当前模式为正向遍历
     }
+
     if (current_cursor_ == IT_MAIN) {
-        MoveForwardMain();
+        MoveForwardMain();  // 移动到下一个主迭代器键
     } else {
-        MoveForwardDelta();
+        MoveForwardDelta();  // 移动到下一个副迭代器键
     }
-    Fix();
-    return IsValid();
+
+    Fix();  // 修正迭代器位置
+    return IsValid();  // 返回迭代器是否有效
 }
 
 bool KvIterator::Prev() {
@@ -336,6 +351,7 @@ bool KvIterator::Prev() {
 }
 
 bool KvIterator::GotoKey(const Value& key) {
+    FMA_LOG() << "GotoKey is invoked";
     ThrowIfTaskKilled();
     key_ = key.MakeMdbVal();
     int ec;
@@ -359,9 +375,13 @@ bool KvIterator::GotoKey(const Value& key) {
 }
 
 bool KvIterator::GotoClosestKey(const Value& key) {
+    FMA_LOG() << "GotoClosestKey is invoked: " << key.Data();
     ThrowIfTaskKilled();
+    FMA_LOG() << "key.MakeMdbVal()";
     key_ = key.MakeMdbVal();
+    FMA_LOG() << "mdb_cursor_get";
     int ec = mdb_cursor_get(cursor_, &key_, &value_, MDB_SET_RANGE);
+    FMA_LOG() << "ec: " << ec;
     if (txn_->read_only_ || !txn_->optimistic_) {
         valid_ = (ec == MDB_SUCCESS);
         if (ec == MDB_SUCCESS || ec == MDB_NOTFOUND) return valid_;
@@ -427,18 +447,24 @@ Value KvIterator::GetKey() const {
     }
 }
 
+// 获取当前数据项的值
 Value KvIterator::GetValue(bool for_update) {
     if (txn_->read_only_ || !txn_->optimistic_) {
+        FMA_LOG() << "value of KvIterator::GetValue: " << Value((char*)value_.mv_data + sizeof(size_t), value_.mv_size - sizeof(size_t)).Data();
+        // 返回只读模式下数据项的值（不包括版本信息）
         return Value((char*)value_.mv_data + sizeof(size_t), value_.mv_size - sizeof(size_t));
     } else {
         if (current_cursor_ == IT_MAIN) {
             if (for_update) {
+                // 获取数据项的版本号并为更新操作准备键
                 size_t version = *(size_t*)(value_.mv_data);
                 Value key(key_);
                 delta_->GetForUpdate(key, version);
             }
+            // 返回乐观事务模式下数据项的值（不包括版本信息）
             return Value((char*)value_.mv_data + sizeof(size_t), value_.mv_size - sizeof(size_t));
         } else {
+            // 返回副迭代器数据项的值（不包括版本信息）
             return Value(iter_->second.data() + sizeof(size_t) + sizeof(int8_t),
                          iter_->second.size() - sizeof(size_t) - sizeof(int8_t));
         }

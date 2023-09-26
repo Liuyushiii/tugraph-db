@@ -26,18 +26,29 @@
 /* Runtime Record to User Record */
 static void RRecordToURecord(
     lgraph_api::Transaction *txn,
+    // 查询规定的返回结果，比如返回的是路径p，header[0].first=p,header[0].second=0x23,
     const std::vector<std::pair<std::string, lgraph_api::LGraphType>> &header,
-    const std::shared_ptr<cypher::Record> &record_ptr, lgraph_api::Record &record) {
+    // 子节点的record_ptr  例如，[V[5],E[5_2_0_0_0],V[2],E[2_1_0_0_0],V[1]]
+    const std::shared_ptr<cypher::Record> &record_ptr,
+    // 结果传入的record（和上面的record_ptr的类型不同）
+    lgraph_api::Record &record) {
     if (header.empty()) {
         return;
     }
+    FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧RRecordToURecord⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
+    FMA_LOG() << "header: ";
+    for (auto item: header){
+        FMA_LOG() << "  " << item.first << ", " << static_cast<uint16_t>(item.second);
+    }
 
     for (size_t index = 0; index < header.size(); index++) {
+        FMA_LOG() << "v: " << record_ptr->values[index].ToString();
         auto &v = record_ptr->values[index];
         const auto &entry_type = v.type;
         const auto &header_type = header[index].second;
 
         if (entry_type == cypher::Entry::NODE_SNAPSHOT) {
+            FMA_LOG() << "entry_type == cypher::Entry::NODE_SNAPSHOT";
             if (header_type == lgraph_api::LGraphType::NODE ||
                 header_type == lgraph_api::LGraphType::ANY) {
                 std::regex regex_word("(V)\\[([0-9]+)\\]");
@@ -55,8 +66,17 @@ static void RRecordToURecord(
         }
 
         if (entry_type == cypher::Entry::NODE) {
+            FMA_LOG() << "entry_type == cypher::Entry::NODE";
             if (header_type == lgraph_api::LGraphType::NODE ||
                 header_type == lgraph_api::LGraphType::ANY) {
+
+                if (header_type == lgraph_api::LGraphType::NODE){
+                    FMA_LOG() << "header_type == lgraph_api::LGraphType::NODE";
+                }
+                if (header_type == lgraph_api::LGraphType::ANY){
+                    FMA_LOG() << "header_type == lgraph_api::LGraphType::ANY";
+                }
+
                 auto vid = v.node->PullVid();
                 if (vid >= 0) {
                     record.Insert(header[index].first, vid, txn);
@@ -73,6 +93,7 @@ static void RRecordToURecord(
         }
 
         if (entry_type == cypher::Entry::RELP_SNAPSHOT) {
+            FMA_LOG() << "entry_type == cypher::Entry::RELP_SNAPSHOT";
             if (header_type == lgraph_api::LGraphType::RELATIONSHIP ||
                 header_type == lgraph_api::LGraphType::ANY) {
                 std::regex regex_word("(E)\\[([0-9]+_[0-9]+_[0-9]+_[0-9]+_[0-9]+)\\]");
@@ -100,6 +121,7 @@ static void RRecordToURecord(
         }
 
         if (entry_type == cypher::Entry::RELATIONSHIP) {
+            FMA_LOG() << "entry_type == cypher::Entry::RELATIONSHIP";
             if (header_type == lgraph_api::LGraphType::RELATIONSHIP ||
                 header_type == lgraph_api::LGraphType::ANY) {
                 auto uit = v.relationship->ItRef();
@@ -114,6 +136,7 @@ static void RRecordToURecord(
         }
 
         if (entry_type == cypher::Entry::CONSTANT) {
+            FMA_LOG() << "entry_type == cypher::Entry::CONSTANT";
             if (header_type == lgraph_api::LGraphType::PATH) {
                 using Vertex = lgraph_api::traversal::Vertex;
                 using Path = lgraph_api::traversal::Path;
@@ -160,6 +183,7 @@ static void RRecordToURecord(
         }
 
         if (entry_type == cypher::Entry::UNKNOWN) {
+            FMA_LOG() << "entry_type == cypher::Entry::UNKNOWN";
             if (v.constant.array != nullptr) {
                 record.Insert(header[index].first, lgraph_api::FieldData(v.ToString()));
             } else {
@@ -199,6 +223,7 @@ class ProduceResults : public OpBase {
     /* ProduceResults next operation
      * called each time a new result record is required */
     OpResult RealConsume(RTContext *ctx) override {
+        FMA_LOG() << "RealConsume (op_produce_results)";
         if (state_ == Uninitialized) {
             Initialize(ctx);
             state_ = Consuming;

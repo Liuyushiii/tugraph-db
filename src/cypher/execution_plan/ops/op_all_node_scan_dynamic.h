@@ -69,6 +69,7 @@ class AllNodeScanDynamic : public OpBase {
          * - otherwise, set node to -1 in case mistaken for the
          *   vertex to be valid.
          * */
+        FMA_LOG() << "RealConsume (op_all_node_scan_dynamic)";
         node_->SetVid(-1);
         if (!it_ || !it_->IsValid()) return OP_DEPLETED;
         auto child = children[0];

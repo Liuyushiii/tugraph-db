@@ -95,6 +95,7 @@ class Apply : public OpBase {
         /* perform a nested loop by taking a single row from the left-hand side,
          * and using the Argument operator on the right-hand side, execute the
          * operator tree on the right-hand side.  */
+        FMA_LOG() << "RealConsume (op_apply)";
         if (state == StreamDepleted) return OP_DEPLETED;
         if (state == StreamUnInitialized) {
             if (PullFromLhs(ctx) != OP_OK) {
