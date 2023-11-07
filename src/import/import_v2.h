@@ -167,8 +167,8 @@ class Importer {
 
     DataForOneVertex MakeDataKvs(
         VertexId vid, const DenseString& vdata,
-        std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>>&& outs,
-        std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>>&& ins);
+        std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>>&& outs,
+        std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>>&& ins);
 
     std::vector<PlanExecutor::Action> MakePlan(
         const std::map<std::string, std::vector<CsvDesc*>>& v_label_files,

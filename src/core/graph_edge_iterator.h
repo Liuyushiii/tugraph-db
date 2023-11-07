@@ -67,6 +67,7 @@ inline EdgeValue GetEdgeValue<PackType::IN_EDGE>(const PackedDataValue& pdv) {
 
 template <>
 inline EdgeValue GetEdgeValue<PackType::OUT_EDGE>(const PackedDataValue& pdv) {
+    FMA_LOG() << "GetOutEdgeValue is invoked";
     return pdv.GetOutEdge();
 }
 
@@ -133,11 +134,15 @@ class EdgeIteratorImpl {
     TemporalId tid_{};
     VertexId vid2_{};     // second vid, vid2 for out-edge, vid1 for in-edge
     EdgeId eid_{};        // edge id
+    VertexId version_{};  // version
+    VertexId versionl_{}; // versionl
+    VertexId versionr_{}; // versionr
     const char* prop_{};  // property
     size_t psize_{};      // property size
 
     size_t pos_{};  // position in the edge node
     bool valid_{};  // is this iterator valid?
+
 
     static void CheckPropSize(const Value& prop) {
         if (prop.Size() > ::lgraph::_detail::MAX_PROP_SIZE)
@@ -165,18 +170,24 @@ class EdgeIteratorImpl {
     void LoadContentFromIt(bool closest) {
         valid_ = false;
         PackType pt = KeyPacker::GetNodeType(it_->GetKey());
+        FMA_LOG() << "PackType is : " << pt;
         if (pt == PackType::PACKED_DATA) {
+            FMA_LOG() << "PackType is PACKED_DATA";
             ev_ = _detail::GetEdgeValue<ET>(PackedDataValue(it_->GetValue()));
         } else {
             FMA_DBG_CHECK_EQ(pt, ET);
             ev_ = EdgeValue(it_->GetValue());
         }
         // no edge, this can only happend in PackedDataNode with no edge
+        FMA_LOG() << "EdgeCount: " << ev_.GetEdgeCount();
         if (ev_.GetEdgeCount() == 0) {
+            FMA_LOG() << "size of edge is 0";
             FMA_DBG_CHECK_EQ(pt, PackType::PACKED_DATA);
             return;
         }
+        FMA_LOG() << "[get first edge] lid_: " << lid_ << ", tid_: " << tid_ << ", vid2_: " << vid2_ << ", eid_: " << eid_;
         // get first edge
+        // 获取第一条边，一般是 边迭代器 初始化时调用
         if (lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0) {
             pos_ = 0;
             auto edge = ev_.GetNthEdgeData(pos_);
@@ -194,6 +205,7 @@ class EdgeIteratorImpl {
             return;
         }
         // search within an out-edge node
+        // 获取制定的边，一般是 RRecordToURecord 阶段调用
         pos_ = ev_.SearchEdge(lid_, tid_, vid2_, eid_, valid_);
         // found the edge
         if (valid_) {
@@ -219,6 +231,89 @@ class EdgeIteratorImpl {
             }
         }
     }
+
+    // new append
+    void LoadContentFromItVersion(bool closest) {
+        valid_ = false;
+        PackType pt = KeyPacker::GetNodeType(it_->GetKey());
+        FMA_LOG() << "PackType is : " << pt;
+        if (pt == PackType::PACKED_DATA) {
+            FMA_LOG() << "PackType is PACKED_DATA";
+            ev_ = _detail::GetEdgeValue<ET>(PackedDataValue(it_->GetValue()));
+        } else {
+            FMA_DBG_CHECK_EQ(pt, ET);
+            ev_ = EdgeValue(it_->GetValue());
+        }
+        // no edge, this can only happend in PackedDataNode with no edge
+        FMA_LOG() << "EdgeCount: " << ev_.GetEdgeCount();
+        if (ev_.GetEdgeCount() == 0) {
+            FMA_LOG() << "size of edge is 0";
+            FMA_DBG_CHECK_EQ(pt, PackType::PACKED_DATA);
+            return;
+        }
+        FMA_LOG() << "[current status] lid_: " << lid_ << ", tid_: " << tid_ << ", vid2_: " << vid2_ << ", eid_: " << eid_ << ", verid: "<<version_;
+        // get first edge
+        // 获取第一条边，一般是 边迭代器 初始化时调用
+        if (lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0 && version_ == 0) {
+            FMA_LOG() << "get first edge";
+            pos_ = 0;
+            // auto edge = ev_.GetNthEdgeData(pos_);
+            // new append (替换上面的代码)
+            auto edge = ev_.GetNthEdgeDataVersion(pos_);
+            FMA_LOG() << "[get first edge] lid: " << edge.lid << ", tid: " << edge.tid << ", vid: " << edge.vid << ", eid: " << edge.eid << ", version: " << edge.version;
+            if (closest || (edge.lid == 0 && edge.tid == 0 && edge.vid == 0 && edge.eid == 0)) {
+                if (closest) {
+                    lid_ = edge.lid;
+                    tid_ = edge.tid;
+                    vid2_ = edge.vid;
+                    eid_ = edge.eid;
+                    version_ = edge.version;
+                }
+                valid_ = true;
+                prop_ = edge.prop;
+                psize_ = edge.psize;
+            }
+            return;
+        }
+        FMA_LOG() << "get a specfic edge";
+        // search within an out-edge node
+        // 获取制定的边，一般是 RRecordToURecord 阶段调用
+        // pos_ = ev_.SearchEdge(lid_, tid_, vid2_, eid_, valid_);
+
+        // new append (替换上面的代码)
+        FMA_LOG() << "version: "<<version_;
+        pos_ = ev_.SearchEdgeVersion(lid_, tid_, vid2_, eid_, version_, valid_);
+        FMA_LOG() << "valid: "<<valid_?"true":"false";
+        // found the edge
+        if (valid_) {
+            // get property
+            // ev_.ParseNthEdge(pos_, lid_, tid_, vid2_, eid_, prop_, psize_);
+            // new append (替换上面的代码)
+            ev_.ParseNthEdgeVersion(pos_, lid_, tid_, vid2_, eid_, version_, prop_, psize_);
+            return;
+        }
+        if (pos_ >= ev_.GetEdgeCount()) {
+            // search passed the end, no such edge, and no edge after this one
+            return;
+        } else {
+            // may have (lid, tid, vid, eid) bigger than this one
+            // auto edge = ev_.GetNthEdgeData(pos_);
+            // new append (替换上面的代码)
+            auto edge = ev_.GetNthEdgeDataVersion(pos_);
+            if (closest) {
+                valid_ = true;
+                lid_ = edge.lid;
+                tid_ = edge.tid;
+                vid2_ = edge.vid;
+                eid_ = edge.eid;
+                version_ = edge.version;
+                prop_ = edge.prop;
+                psize_ = edge.psize;
+                return;
+            }
+        }
+    }
+
     DISABLE_COPY(EdgeIteratorImpl);
 
  public:
@@ -259,25 +354,27 @@ class EdgeIteratorImpl {
     }
 
     bool Goto(VertexId vid1, LabelId lid, TemporalId tid, VertexId vid2, EdgeId eid, bool closest) {
-        FMA_LOG() << "Goto in graph_edge_iterator: " << vid1 << ", "<< lid << ", "<< tid << ", "<< vid2 << ", "<< eid;
-        // FMA_LOG() << "  vid1: " << vid1;
-        // FMA_LOG() << "  lid: " << lid;
-        // FMA_LOG() << "  tid: " << tid;
-        // FMA_LOG() << "  vid2: " << vid2;
-        // FMA_LOG() << "  eid: " << eid;
-        // FMA_LOG() << "  closest: " << closest;
+        FMA_LOG() << "[EdgeIteratorImpl] Goto: " << vid1 << ", "<< lid << ", "<< tid << ", "<< vid2 << ", "<< eid;
         valid_ = false;
         vid1_ = vid1;
         lid_ = lid;
         tid_ = tid;
         vid2_ = vid2;
         eid_ = eid;
+        FMA_LOG() << "***** before GotoClosestKey *****";
         bool r = it_->GotoClosestKey(KeyPacker::CreatePackedDataKey(vid1_));
+        FMA_LOG() << "***** after GotoClosestKey *****";
+        FMA_LOG() << "value of r: " << r;
         if (!r) return false;  // no such vertex
         const Value& k = it_->GetKey();
-        if (KeyPacker::GetFirstVid(k) != vid1_) return false;  // no such vertex
+        if (KeyPacker::GetFirstVid(k) != vid1_) 
+        {
+            FMA_LOG() << "first vid not equal to vid1_";
+            return false;  // no such vertex
+        }
         // now we are sure the vertex exist, check whether it is a packed vertex
         PackType pt = KeyPacker::GetNodeType(k);
+        FMA_LOG() << "GetNodeType finished: " << pt;
         if (pt == PackType::VERTEX_ONLY) {
             if (lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0 &&
                 ET == PackType::OUT_EDGE) {  // get the first one
@@ -286,51 +383,82 @@ class EdgeIteratorImpl {
                 r = it_->GotoClosestKey(
                     KeyPacker::CreateEdgeKey(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_)));
             }
-            if (!r) return false;  // searched till end of db, no such edge
+            if (!r) {
+                return false;  // searched till end of db, no such edge
+            }
             pt = KeyPacker::GetNodeType(it_->GetKey());
-            if (pt != ET) return false;
+            if (pt != ET) {
+                return false;
+            }
         }
-        LoadContentFromIt(closest);
+
+        FMA_LOG() << "***** before LoadContentFromIt *****";
+        // LoadContentFromIt(closest);
+        // new append（替换上面的方法）
+        LoadContentFromItVersion(closest);
+        FMA_LOG() << "***** after LoadContentFromIt *****";
         return valid_;
     }
 
     // new append
-    bool GotoVersion(VertexId vid1, LabelId lid, TemporalId tid, VertexId vid2, EdgeId eid, bool closest, int version) {
-        FMA_LOG() << "Goto in graph_edge_iterator: " << vid1 << ", "<< lid << ", "<< tid << ", "<< vid2 << ", "<< eid << ", " << version;
+    bool GotoVersion(VertexId vid1, LabelId lid, TemporalId tid, VertexId vid2, EdgeId eid, bool closest,VertexId verid) {
+        FMA_LOG() << "Goto in graph_edge_iterator: " << vid1 << ", "<< lid << ", "<< tid << ", "<< vid2 << ", "<< eid << ", " << verid;
         valid_ = false;
         vid1_ = vid1;
         lid_ = lid;
         tid_ = tid;
         vid2_ = vid2;
         eid_ = eid;
+        version_ = verid;
         // 将 vid1_ 编码为 key
-        // bool r = it_->GotoClosestKey(KeyPacker::CreatePackedDataKey(vid1_));
-        bool r = it_->GotoClosestKey(KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_)));
+        bool r = it_->GotoClosestKey(KeyPacker::CreatePackedDataKey(vid1_));
+        // bool r = it_->GotoClosestKey(KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_)));
+        // bool r = it_->GotoClosestKey(KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, 0, 0, 0, 0)));
         if (!r) return false;  // no such vertex
         const Value& k = it_->GetKey();
         if (KeyPacker::GetFirstVid(k) != vid1_) return false;  // no such vertex
         // now we are sure the vertex exist, check whether it is a packed vertex
         PackType pt = KeyPacker::GetNodeType(k);
+        FMA_LOG() << "PackType is : " << pt;
         // 如果该key存在，则 pt 应该为 VERTEX_ONLY
         if (pt == PackType::VERTEX_ONLY) {
             // 如果其余各参数均为0（通常是迭代器初始化的时候），则让 it_ 指向第一条边
             if (lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0 &&
                 ET == PackType::OUT_EDGE) {  // get the first one
-                r = it_->Next();
+                // r = it_->Next();
+                FMA_LOG() << "lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0";
+                r = it_->GotoClosestKey(
+                    KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_,version_)));
             } else {
                 // 否在将 vid1_, vid2_, lid_, tid_, eid_ 编码为 key，指向与 key 最接近的第一条边
+                FMA_LOG() << "lid_ != 0 || tid_ != 0 || vid2_ != 0 || eid_ != 0";
+                FMA_LOG() << "vid2: " << vid2_;
                 r = it_->GotoClosestKey(
-                    KeyPacker::CreateEdgeKey(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_)));
+                    KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_, version_)));
+                // r = it_->GotoClosestKey(
+                //     KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(49, 46, lid_, tid_, eid_, 195)));
             }
             if (!r) return false;  // searched till end of db, no such edge
             pt = KeyPacker::GetNodeType(it_->GetKey());
+            FMA_LOG() << "pt after: " << pt;
             if (pt != ET) return false;
         }
-        LoadContentFromIt(closest);
+        LoadContentFromItVersion(closest);
         return valid_;
     }
 
  public:
+
+    void SetVersionl(VertexId version){
+        versionl_ = version;
+        FMA_LOG() << "versionl_ : " << versionl_;
+    }
+
+    void SetVersionr(VertexId version){
+        versionr_ = version;
+        FMA_LOG() << "versionr_ : " << versionr_;
+    }
+
     void Close() {
         valid_ = false;
         it_->Close();
@@ -343,10 +471,10 @@ class EdgeIteratorImpl {
     }
 
     // new append
-    bool GotoVersion(const EdgeUid& euid, bool closest, int version) {
+    bool GotoVersion(const EdgeUid& euid, bool closest) {
         return ET == PackType::OUT_EDGE
-                   ? GotoVersion(euid.src, euid.lid, euid.tid, euid.dst, euid.eid, closest, version)
-                   : GotoVersion(euid.dst, euid.lid, euid.tid, euid.src, euid.eid, closest, version);
+                   ? GotoVersion(euid.src, euid.lid, euid.tid, euid.dst, euid.eid, closest, euid.verid)
+                   : GotoVersion(euid.dst, euid.lid, euid.tid, euid.src, euid.eid, closest, euid.verid);
     }
     /**
      * Move to the next edge
@@ -355,14 +483,17 @@ class EdgeIteratorImpl {
      */
     bool Next() {
         if (!valid_) return false;
-        FMA_LOG() << vid1_ << " to " << vid2_ << " has " << ev_.GetEdgeCount() << " edges";
+        FMA_LOG() << "vid1 " << vid1_ << " has " << ev_.GetEdgeCount() << " edges";
         if (pos_ >= ev_.GetEdgeCount() - 1){
             FMA_LOG() << "all is checked";
         }
         if (pos_ < ev_.GetEdgeCount() - 1) {
             pos_++;
-            FMA_LOG() << "check " << pos_;
-            ev_.ParseNthEdge(pos_, lid_, tid_, vid2_, eid_, prop_, psize_);
+            //ev_.ParseNthEdge(pos_, lid_, tid_, vid2_, eid_, prop_, psize_);
+            
+            //new_append
+            ev_.ParseNthEdgeVersion(pos_, lid_, tid_, vid2_, eid_, version_, prop_, psize_);
+            FMA_LOG() << "check " << pos_ << ", lid_: " << lid_ << ", tid_: " << tid_ << ", vid2_: " << vid2_ << ", eid_: " << eid_<< ", version_: "<<version_;
             return true;
         }
         FMA_LOG() << "reached the end of current block";
@@ -382,7 +513,9 @@ class EdgeIteratorImpl {
         FMA_DBG_ASSERT(ev_.GetEdgeCount() > 0);
         valid_ = true;
         pos_ = 0;
-        ev_.ParseNthEdge(pos_, lid_, tid_, vid2_, eid_, prop_, psize_);
+        //ev_.ParseNthEdge(pos_, lid_, tid_, vid2_, eid_, prop_, psize_);
+        //new_append
+        ev_.ParseNthEdgeVersion(pos_, lid_, tid_, vid2_, eid_, version_, prop_, psize_);
         return true;
     }
 
@@ -395,8 +528,8 @@ class EdgeIteratorImpl {
     VertexId GetVid1() const { return vid1_; }
 
     EdgeUid GetUid() const {
-        return ET == PackType::OUT_EDGE ? EdgeUid(vid1_, vid2_, lid_, tid_, eid_)
-                                        : EdgeUid(vid2_, vid1_, lid_, tid_, eid_);
+        return ET == PackType::OUT_EDGE ? EdgeUid(vid1_, vid2_, lid_, tid_, eid_,version_)
+                                        : EdgeUid(vid2_, vid1_, lid_, tid_, eid_,version_);
     }
 
     // get label id of the edge
@@ -929,6 +1062,8 @@ class EdgeIterator : public ::lgraph::IteratorBase {
         : IteratorBase(nullptr), it_(*txn, table), impl_(it_) {
         FMA_LOG() << "constructor of EdgeIterator is invoked (h): " << euid.ToString();
         impl_.Goto(euid, closest);
+        //new append
+        //impl_.GotoWithVersion(euid,closest);
     }
 
     KvIterator& GetIt() { return it_; }
@@ -962,7 +1097,7 @@ class EdgeIterator : public ::lgraph::IteratorBase {
     bool Goto(const EdgeUid& euid, bool closest) { return impl_.Goto(euid, closest); }
 
     // new append
-    bool GotoVersion(const EdgeUid& euid, bool closest, int version) { return impl_.GotoVersion(euid, closest, version); }
+    bool GotoVersion(const EdgeUid& euid, bool closest) { return impl_.GotoVersion(euid, closest); }
     /**
      * Move to the next edge
      *

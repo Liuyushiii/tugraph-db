@@ -168,10 +168,13 @@ void KvTable::AppendKv(KvTransaction& txn, const Value& key, const Value& value)
     *(size_t*)(tmp.Data()) = txn.version_;
     memcpy(tmp.Data() + sizeof(size_t), value.Data(), value.Size());
     MDB_val v = tmp.MakeMdbVal();
+    // FMA_LOG() << "before THROW_ON_ERR_WITH_KV";
     THROW_ON_ERR_WITH_KV(mdb_put(txn.GetTxn(), dbi_, &k, &v, MDB_APPEND), k, v);
+    // FMA_LOG() << "after THROW_ON_ERR_WITH_KV";
     // write wal
     if (txn.GetWal())
         txn.GetWal()->WriteKvPut(dbi_, key, tmp);
+    // FMA_LOG() << "after WriteKvPut";
 }
 
 bool KvTable::DeleteKey(KvTransaction& txn, const Value& key) {

@@ -614,9 +614,9 @@ class TypeEdgeIterator {
     }
 
     // new append
-    bool GotoVersion(lgraph::VertexId vid, int version) {
+    bool GotoVersion(lgraph::VertexId vid) {
         FMA_LOG() << "new Goto is invoked";
-        return _eit->GotoVersion(EdgeUid(vid,0,0,0,0), true, version);
+        return _eit->GotoVersion(EdgeUid(vid,0,0,0,0), true);
     }
 
     bool IsValid() const { return _valid; }
@@ -774,6 +774,45 @@ class EIter {
         }
     }
 
+    void InitializeVersion(lgraph::Transaction *txn, IteratorType type, lgraph::VertexId vid,
+                    const std::set<std::string> &relp_types, lgraph::VertexId versionl, lgraph::VertexId versionr) {
+        FreeIter();
+        _txn = txn;
+        _type = type;
+        if (relp_types.empty()) return Initialize(txn, type, vid);
+        switch (_type) {
+        case TYPE_OUT_EDGE:
+            // _toeit = new TypeEdgeIterator<lgraph::graph::OutEdgeIterator>(
+            //     _txn, new lgraph::graph::OutEdgeIterator(_txn->GetOutEdgeIterator(vid)),
+            //     relp_types);
+            _toeit = new TypeEdgeIterator<lgraph::graph::OutEdgeIterator>(
+                _txn, new lgraph::graph::OutEdgeIterator(_txn->GetOutEdgeIteratorVersion(vid, versionl, versionr)),
+                relp_types);
+            break;
+        case TYPE_IN_EDGE:
+            _tieit = new TypeEdgeIterator<lgraph::graph::InEdgeIterator>(
+                _txn, new lgraph::graph::InEdgeIterator(_txn->GetInEdgeIterator(vid)), relp_types);
+            break;
+        case BI_TYPE_EDGE:
+            {
+                _toeit = new TypeEdgeIterator<lgraph::graph::OutEdgeIterator>(
+                    _txn, new lgraph::graph::OutEdgeIterator(_txn->GetOutEdgeIterator(vid)),
+                    relp_types);
+                if (_toeit->IsValid()) {
+                    _is_out = true;
+                } else {
+                    delete _toeit;
+                    _tieit = new TypeEdgeIterator<lgraph::graph::InEdgeIterator>(
+                        _txn, new lgraph::graph::InEdgeIterator(_txn->GetInEdgeIterator(vid)),
+                        relp_types);
+                    _is_out = false;
+                }
+                break;
+            }
+        default:
+            throw lgraph::CypherException("EIter constructor type error.");
+        }
+    }
     void Initialize(lgraph::Transaction *txn, const lgraph::EdgeUid &euid) {
         FreeIter();
         _txn = txn;
@@ -822,11 +861,11 @@ class EIter {
     }
 
     // new append
-    bool GotoVersion(lgraph::VertexId vid, int version) {
+    bool GotoVersion(lgraph::VertexId vid) {
         switch (_type) {
             case TYPE_OUT_EDGE:
                 FMA_LOG() << "********************************************";
-                return (_toeit && _toeit->GotoVersion(vid, version));
+                return (_toeit && _toeit->GotoVersion(vid));
             default:
                 return false;
         }

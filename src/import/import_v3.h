@@ -188,6 +188,7 @@ class Importer {
     std::mutex exceptions_lock_;
     std::queue<std::exception_ptr> exceptions_;
     std::unique_ptr<rocksdb::DB> rocksdb_vids_;
+    // 记录每个label包含的vertex的数量
     std::unordered_map<LabelId, std::atomic<int64_t>> vertex_count_;
     std::unordered_map<LabelId, std::atomic<int64_t>> edge_count_;
     std::unordered_map<LabelId, bool> vlid_detach_;

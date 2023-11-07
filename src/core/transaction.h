@@ -158,6 +158,14 @@ class Transaction {
         return graph_->GetOutEdgeIterator(this, EdgeUid(src, 0, 0, 0, 0), true);
     }
 
+    OutEdgeIterator GetOutEdgeIteratorVersion(VertexId src, VertexId versionl, VertexId versionr) {
+        _detail::CheckVid(src);
+        auto oei = graph_->GetOutEdgeIterator(this, EdgeUid(src, 0, 0, 0, 0), true);
+        oei.impl_.SetVersionl(versionl);
+        oei.impl_.SetVersionr(versionr);
+        return oei;
+    }
+
     InEdgeIterator GetInEdgeIterator(const EdgeUid& euid, bool nearest) {
         _detail::CheckEdgeUid(euid);
         return graph_->GetInEdgeIterator(this, euid, nearest);

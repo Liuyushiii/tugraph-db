@@ -24,7 +24,14 @@ EdgeIterator<ET>::EdgeIterator(::lgraph::Transaction* txn, KvTable& table, const
     : IteratorBase(txn), it_(txn->GetTxn(), table), impl_(it_) {
 
     FMA_LOG() << "constructor of EdgeIterator is invoked (cpp): " << euid.ToString();
-    impl_.Goto(euid, closest);
+    if(euid.verid==0){
+        FMA_LOG() << "Goto is invoked";
+        impl_.Goto(euid, closest);
+    }
+    else{
+        FMA_LOG() << "GotoVersion is invoked";
+        impl_.GotoVersion(euid, closest);
+    }
 }
 
 template EdgeIterator<PackType::IN_EDGE>::EdgeIterator(::lgraph::Transaction* txn, KvTable& table,

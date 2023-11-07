@@ -191,7 +191,11 @@ static inline std::string EdgeUid2String(const ::lgraph::EdgeUid& e) {
     //          You should rewrite the func when the finally plan have be proposed.
     return fma_common::StringFormatter::Format("{}_{}_{}_{}_{}", e.src, e.dst, e.lid, e.tid, e.eid);
 }
-
+static inline std::string EdgeUid2StringWithVersion(const ::lgraph::EdgeUid& e) {
+    // WARNING: Five tuple is temporary solution.
+    //          You should rewrite the func when the finally plan have be proposed.
+    return fma_common::StringFormatter::Format("{}_{}_{}_{}_{}_{}", e.src, e.dst, e.lid, e.tid, e.eid,e.verid);
+}
 [[maybe_unused]]
 static ::lgraph::EdgeUid ExtractEdgeUid(const std::string& s) {
     std::stringstream ss(s);

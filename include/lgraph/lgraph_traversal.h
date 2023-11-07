@@ -283,6 +283,8 @@ class Edge {
     size_t eid_;
     uint16_t lid_;
     int64_t tid_;
+    //new append
+    size_t version_;
     bool forward_;
 
  public:
@@ -298,6 +300,8 @@ class Edge {
      */
     Edge(size_t start, uint16_t lid, uint64_t tid, size_t end, size_t eid, bool forward);
 
+    //new append
+    Edge(size_t start, uint16_t lid, uint64_t tid, size_t end, size_t eid, size_t version,bool forward);
     /**
      * @brief   Copy constructor
      *
@@ -319,6 +323,8 @@ class Edge {
      */
     Vertex GetEndVertex() const;
 
+    //new append
+    Vertex GetVersion() const;
     /**
      * @brief   Get the label ID.
      *
@@ -428,6 +434,7 @@ class Path {
      */
     void Append(const Edge &edge);
 
+    void AppendWithVersion(const Edge &edge);
     /** @brief   Get the start vertex of this path. */
     Vertex GetStartVertex() const;
 
@@ -440,8 +447,11 @@ class Path {
     /** @brief   Get the Nth edge of this path. The available range of N is [0, Length). */
     Edge GetNthEdge(size_t n) const;
 
+    Edge GetNthEdgeWithVersion(size_t n) const;
     /** @brief   Get the Nth vertex of this path. The available range of N is [0, Length]. */
     Vertex GetNthVertex(size_t n) const;
+
+    Vertex GetNthVertexWithVersion(size_t n) const;
 };
 
 /**

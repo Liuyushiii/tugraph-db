@@ -968,9 +968,11 @@ struct IndexSpec {
 };
 
 struct EdgeUid {
-    EdgeUid() : src(0), dst(0), lid(0), tid(0), eid(0) {}
+    EdgeUid() : src(0), dst(0), lid(0), tid(0), eid(0), verid(0) {}
     EdgeUid(int64_t s, int64_t d, uint16_t l, int64_t t, int64_t e)
-        : src(s), dst(d), lid(l), tid(t), eid(e) {}
+        : src(s), dst(d), lid(l), tid(t), eid(e) ,verid(0) {}
+    EdgeUid(int64_t s, int64_t d, uint16_t l, int64_t t, int64_t e, int64_t ver)
+        : src(s), dst(d), lid(l), tid(t), eid(e) ,verid(ver){}
 
     static inline EdgeUid AnyEdge() { return EdgeUid(); }
 
@@ -984,7 +986,8 @@ struct EdgeUid {
     int64_t tid;
     /** @brief   additional edge id to distinguish edges with the same tid */
     int64_t eid;
-
+    //new append y
+    int64_t verid;
     /** @brief   Reverses side of this edge */
     void Reverse() { std::swap(src, dst); }
 
@@ -996,7 +999,7 @@ struct EdgeUid {
     /** @brief  Get string representation of this object */
     std::string ToString() const {
         return std::to_string(src) + "_" + std::to_string(dst) + "_" + std::to_string(lid) + "_" +
-               std::to_string(tid) + "_" + std::to_string(eid);
+               std::to_string(tid) + "_" + std::to_string(eid) + "_" + std::to_string(verid);
     }
 
     /** @brief   Comparator for EdgeUid of out-going edges. */
@@ -1004,6 +1007,10 @@ struct EdgeUid {
         inline bool operator()(const EdgeUid& lhs, const EdgeUid& rhs) const {
             if (lhs.src < rhs.src) return true;
             if (lhs.src > rhs.src) return false;
+            //new append
+            if (lhs.verid < rhs.verid) return true;
+            if (lhs.verid > rhs.verid) return false;
+
             if (lhs.lid < rhs.lid) return true;
             if (lhs.lid > rhs.lid) return false;
             if (lhs.tid < rhs.tid) return true;
@@ -1020,6 +1027,10 @@ struct EdgeUid {
         inline bool operator()(const EdgeUid& lhs, const EdgeUid& rhs) const {
             if (lhs.dst < rhs.dst) return true;
             if (lhs.dst > rhs.dst) return false;
+            //new append
+            if (lhs.verid < rhs.verid) return true;
+            if (lhs.verid > rhs.verid) return false;
+
             if (lhs.lid < rhs.lid) return true;
             if (lhs.lid > rhs.lid) return false;
             if (lhs.tid < rhs.tid) return true;

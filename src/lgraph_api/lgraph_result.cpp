@@ -248,6 +248,7 @@ void Record::Insert(const std::string &key, const traversal::Path &path,
     if (path.Length() == 0) {
         record[key] = std::shared_ptr<ResultElement>(new ResultElement(result_path));
     }
+    FMA_LOG() << "Get Path length: "<<path.Length();
     for (size_t i = 0; i < path.Length(); i++) {
         lgraph_result::Node node;
         auto vid = path.GetNthVertex(i).GetId();
@@ -260,8 +261,10 @@ void Record::Insert(const std::string &key, const traversal::Path &path,
         result_path.emplace_back(lgraph_result::PathElement(std::move(node)));
         auto edge = path.GetNthEdge(i);
         lgraph_result::Relationship repl;
+        //这里得加version用于后续的二分查找
         auto euid = lgraph::EdgeUid(edge.GetSrcVertex().GetId(), edge.GetDstVertex().GetId(),
                                     edge.GetLabelId(), edge.GetTemporalId(), edge.GetEdgeId());
+        FMA_LOG() << "create EdgeIterator";
         auto eit = core_txn->GetOutEdgeIterator(euid, false);
         repl.id = euid.eid;
         repl.src = euid.src;
@@ -286,6 +289,74 @@ void Record::Insert(const std::string &key, const traversal::Path &path,
     result_path.emplace_back(lgraph_result::PathElement(std::move(node)));
     record[key] = std::shared_ptr<ResultElement>(new ResultElement(result_path));
     length_++;
+}
+//new append
+void Record::InsertWithVersion(const std::string &key, const traversal::Path &path,
+                    lgraph_api::Transaction *txn) {
+    auto core_txn = txn->GetTxn().get();
+    if (!HasKey(key) || header[key] != LGraphType::PATH) {
+        throw std::runtime_error(
+            FMA_FMT("[STANDARD RESULT ERROR] the variable {} is not exist", key));
+    }
+    lgraph_result::Path result_path;
+    if (path.Length() == 0) {
+        record[key] = std::shared_ptr<ResultElement>(new ResultElement(result_path));
+    }
+    FMA_LOG() << "Get Path length: "<<path.Length();
+    for (size_t i = 0; i < path.Length(); i++) {
+        lgraph_result::Node node;
+        auto vid = path.GetNthVertexWithVersion(i).GetId();
+        auto vit = core_txn->GetVertexIterator(vid);
+        node.id = vid;
+        node.label = core_txn->GetVertexLabel(vit);
+        for (const auto &property : core_txn->GetVertexFields(vit)) {
+            node.properties[property.first] = property.second;
+        }
+        result_path.emplace_back(lgraph_result::PathElement(std::move(node)));
+        auto edge = path.GetNthEdgeWithVersion(i);
+        lgraph_result::Relationship repl;
+        //这里得加version用于后续的二分查找
+        // auto euid = lgraph::EdgeUid(edge.GetSrcVertex().GetId(), edge.GetDstVertex().GetId(),
+        //                             edge.GetLabelId(), edge.GetTemporalId(), edge.GetEdgeId());
+        //new append
+        auto euid = lgraph::EdgeUid(edge.GetSrcVertex().GetId(), edge.GetDstVertex().GetId(),
+                                    edge.GetLabelId(), edge.GetTemporalId(), edge.GetEdgeId(),edge.GetVersion().GetId());
+        FMA_LOG() << "=====before GetOutEdgeIterator=====";
+        // *************** 这里有问题 ***************
+        auto eit = core_txn->GetOutEdgeIterator(euid, false);
+        FMA_LOG() << "=====after GetOutEdgeIterator=====";
+        repl.id = euid.eid;
+        repl.src = euid.src;
+        repl.dst = euid.dst;
+        repl.label_id = euid.lid;
+        repl.tid = euid.tid;
+        FMA_LOG() << "=====before GetEdgeLabel=====";
+        repl.label = core_txn->GetEdgeLabel(eit);
+        FMA_LOG() << "=====after GetEdgeLabel=====";
+        repl.forward = ((int64_t)vid == euid.src);
+        FMA_LOG() << "before for";
+        for (const auto &property : core_txn->GetEdgeFields(eit)) {
+            repl.properties[property.first] = property.second;
+        }
+        FMA_LOG() << "after for";
+        result_path.emplace_back(lgraph_result::PathElement(std::move(repl)));
+    }
+    lgraph_result::Node node;
+    auto vid = path.GetEndVertex().GetId();
+    FMA_LOG() << "before GetVertexIterator";
+    auto vit = core_txn->GetVertexIterator(vid);
+    FMA_LOG() << "after GetVertexIterator";
+    node.id = vid;
+    FMA_LOG() << "before GetVertexLabel";
+    node.label = core_txn->GetVertexLabel(vit);
+    FMA_LOG() << "after GetVertexLabel";
+    for (const auto &property : core_txn->GetVertexFields(vit)) {
+        node.properties[property.first] = property.second;
+    }
+    result_path.emplace_back(lgraph_result::PathElement(std::move(node)));
+    record[key] = std::shared_ptr<ResultElement>(new ResultElement(result_path));
+    length_++;
+    FMA_LOG() << "$$$$$$$$$$$ InsertWithVersion finished";
 }
 
 Result::Result(const std::initializer_list<std::pair<std::string, LGraphType>> &args) {

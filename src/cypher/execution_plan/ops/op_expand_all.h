@@ -42,23 +42,37 @@ class ExpandAll : public OpBase {
             iter_type = types.empty() ? lgraph::EIter::BI_EDGE : lgraph::EIter::BI_TYPE_EDGE;
             break;
         }
-        eit_->Initialize(ctx->txn_->GetTxn().get(), iter_type, start_->PullVid(), types);
+        // eit_->Initialize(ctx->txn_->GetTxn().get(), iter_type, start_->PullVid(), types);
 
+        // new append
+        eit_->InitializeVersion(ctx->txn_->GetTxn().get(), iter_type, start_->PullVid(), types, versionl_, versionr_);
         // FMA_LOG() << eit_->Goto("test go to", start_->PullVid()+1);
     }
 
     // 使用过滤器
-    bool _CheckToSkipEdgeFilter(RTContext *ctx) const {
+    // new append 删除const
+    bool _CheckToSkipEdgeFilter(RTContext *ctx) {
         // if the query has edge_filter, filter before node_expand
-        return edge_filter_ && !edge_filter_->DoFilter(ctx, *children[0]->record);
+        // return edge_filter_ && !edge_filter_->DoFilter(ctx, *children[0]->record);
+        bool doFilterVersion = !edge_filter_->DoFilterVersion(ctx, *children[0]->record, &end_flag);
+        return edge_filter_ && doFilterVersion;
+
     }
 
-    bool _CheckToSkipEdge(RTContext *ctx) const {
+    // new append 删除const
+    bool _CheckToSkipEdge(RTContext *ctx) {
+        if (eit_->IsValid())
+            FMA_LOG() << "@@@@@@@@@@@@ " << eit_->GetSrc() << " - " << eit_->GetDst() << " is checked";
         // pattern_graph_->VisitedEdges().Contains(*eit_)： 当前边已经被访问过了
         // _CheckToSkipEdgeFilter(ctx)：利用过滤器过滤
         return eit_->IsValid() &&
                (pattern_graph_->VisitedEdges().Contains(*eit_) || _CheckToSkipEdgeFilter(ctx) ||
                 (expand_into_ && eit_->GetNbr(expand_direction_) != neighbor_->PullVid()));
+    }
+
+    // new append
+    bool FilterByVersion() const {
+        return false;
     }
 
     bool _FilterNeighborLabel(RTContext *ctx) {
@@ -101,9 +115,11 @@ class ExpandAll : public OpBase {
             {
                 return OP_REFRESH;
             }
+            // 初始化 边 迭代器
             _InitializeEdgeIter(ctx);
+            // 提前过滤
             FMA_LOG() << "===============test===============";
-            eit_->GotoVersion(start_->PullVid(), 0);
+            //eit_->GotoVersion(start_->PullVid(), 0);
             FMA_LOG() << "===============test===============";
             while (_CheckToSkipEdge(ctx)) {
                 FMA_LOG() << "_CheckToSkipEdge";
@@ -123,6 +139,8 @@ class ExpandAll : public OpBase {
         // The iterators are set, keep on consuming.
         pattern_graph_->VisitedEdges().Erase(*eit_);
         do {
+            if (end_flag)
+                return OP_REFRESH;
             eit_->Next();
         } while (_CheckToSkipEdge(ctx));
         if (!eit_->IsValid() || !_FilterNeighborLabel(ctx)) {
@@ -146,6 +164,9 @@ class ExpandAll : public OpBase {
     bool expand_into_;
     ExpandTowards expand_direction_;
     std::shared_ptr<lgraph::Filter> edge_filter_ = nullptr;
+    lgraph::VertexId versionl_;
+    lgraph::VertexId versionr_;
+    bool end_flag = false;
 
     /* ExpandAllStates
      * Different states in which ExpandAll can be at. */
@@ -196,6 +217,7 @@ class ExpandAll : public OpBase {
             FMA_LOG() << "filter is not null";
             // 判断 filter 类型是否为 RANGE_FILTER
             if (edge_filter_->Type() == lgraph::Filter::Type::RANGE_FILTER){
+                FMA_LOG() << "edge_filter_ is a range filter";
                 // 类型转换
                 auto range_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_);
                 // ae_right: 常量
@@ -214,8 +236,31 @@ class ExpandAll : public OpBase {
                     FMA_LOG() << "AR_AST_EXP";
                 }
             }
-            // auto _logical_op = edge_filter_->LogicalOp();
-            // FMA_LOG() << "logical op: " << _logical_op;
+            else if (edge_filter_->Type() == lgraph::Filter::Type::UNARY){
+                FMA_LOG() << "edge_filter_ is a UNARY filter";
+            }
+            else if (edge_filter_->Type() == lgraph::Filter::Type::BINARY){
+                FMA_LOG() << "edge_filter_ is a BINARY filter";
+                auto left_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_->Left());
+                auto ae_right1 = left_filter->GetAeRight();
+                versionl_ = std::stoll(ae_right1.operand.constant.ToString());
+                FMA_LOG() << "ae_right1: " << versionl_;
+                auto right_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_->Right());
+                auto ae_right2 = right_filter->GetAeRight();
+                versionr_ = std::stoll(ae_right2.operand.constant.ToString());
+                FMA_LOG() << "ae_right2: " << versionr_;
+                // FMA_LOG() << "left_filter: " << left_filter->GetAeRight().operand.constant.ToString() << "right_filter: " << right_filter->GetAeRight().operand.constant.ToString();
+            }
+            else if (edge_filter_->Type() == lgraph::Filter::Type::LABEL_FILTER){
+                FMA_LOG() << "edge_filter_ is a LABEL_FILTER filter";
+            }
+            else if (edge_filter_->Type() == lgraph::Filter::Type::STRING_FILTER){
+                FMA_LOG() << "edge_filter_ is a STRING_FILTER filter";
+            }
+            else if (edge_filter_->Type() == lgraph::Filter::Type::GEAX_EXPR_FILTER){
+                FMA_LOG() << "edge_filter_ is a GEAX_EXPR_FILTER filter";
+            }
+
         }
         CYPHER_THROW_ASSERT(!children.empty());
         auto child = children[0];

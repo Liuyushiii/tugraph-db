@@ -106,15 +106,10 @@ class NodeIndexSeek : public OpBase {
          *   vertex to be valid.
          * */
         FMA_LOG() << "RealConsume (op_node_index_seek)";
-        FMA_LOG() << "properties of it in op_node_index_seek: " << it_->Properties();
-        FMA_LOG() << "target values: ";
+        // FMA_LOG() << "properties of it in op_node_index_seek: " << it_->Properties();
+        // FMA_LOG() << "target values: ";
 
-        FMA_LOG() << "type of it: " << it_->GetIteratorType();
-
-
-        for (auto v : target_values_){
-            FMA_LOG() << "  " << v.ToString();
-        }
+        // FMA_LOG() << "type of it: " << it_->GetIteratorType();
 
         node_->SetVid(-1);
 

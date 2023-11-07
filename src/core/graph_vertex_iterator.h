@@ -154,7 +154,7 @@ class VertexIteratorImpl {
      * \return  True if it succeeds, otherwise false (no such vertex).
      */
     bool Goto(VertexId vid, bool closest = false) {
-        FMA_LOG() << "go to: " << vid;
+        FMA_LOG() << "[graph_vertex_iterator] go to: " << vid;
         valid_ = false;
         it_->GotoClosestKey(KeyPacker::CreatePackedDataKey(vid));
         if (!it_->IsValid()) return false;

@@ -193,7 +193,10 @@ struct Entry {
                 if (!eit || !eit->IsValid()) return null_value;
                 // E[src,dst,lid,eid]
                 std::string str("E[");
-                str.append(cypher::_detail::EdgeUid2String(eit->GetUid())).append("]");
+                //str.append(cypher::_detail::EdgeUid2String(eit->GetUid())).append("]");
+                //new append
+                str.append(cypher::_detail::EdgeUid2StringWithVersion(eit->GetUid())).append("]");
+                FMA_LOG() << "Relation_record: "<<str;
                 return str;
             }
         case VAR_LEN_RELP:

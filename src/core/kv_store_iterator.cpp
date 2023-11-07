@@ -375,13 +375,13 @@ bool KvIterator::GotoKey(const Value& key) {
 }
 
 bool KvIterator::GotoClosestKey(const Value& key) {
-    FMA_LOG() << "GotoClosestKey is invoked: " << key.Data();
+    FMA_LOG() << "[kv_store_iterator] GotoClosestKey is invoked";
     ThrowIfTaskKilled();
-    FMA_LOG() << "key.MakeMdbVal()";
+    FMA_LOG() << "  key.MakeMdbVal()";
     key_ = key.MakeMdbVal();
-    FMA_LOG() << "mdb_cursor_get";
+    FMA_LOG() << "  mdb_cursor_get";
     int ec = mdb_cursor_get(cursor_, &key_, &value_, MDB_SET_RANGE);
-    FMA_LOG() << "ec: " << ec;
+    FMA_LOG() << "  ec: " << ec;
     if (txn_->read_only_ || !txn_->optimistic_) {
         valid_ = (ec == MDB_SUCCESS);
         if (ec == MDB_SUCCESS || ec == MDB_NOTFOUND) return valid_;
@@ -450,7 +450,7 @@ Value KvIterator::GetKey() const {
 // 获取当前数据项的值
 Value KvIterator::GetValue(bool for_update) {
     if (txn_->read_only_ || !txn_->optimistic_) {
-        FMA_LOG() << "value of KvIterator::GetValue: " << Value((char*)value_.mv_data + sizeof(size_t), value_.mv_size - sizeof(size_t)).Data();
+        FMA_LOG() << "[GetValue] size of value: " << value_.mv_size - sizeof(size_t);
         // 返回只读模式下数据项的值（不包括版本信息）
         return Value((char*)value_.mv_data + sizeof(size_t), value_.mv_size - sizeof(size_t));
     } else {

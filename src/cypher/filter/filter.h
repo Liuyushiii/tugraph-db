@@ -124,7 +124,9 @@ class Filter {
 
     Filter(lgraph::LogicalOp logical_op, const std::shared_ptr<Filter> &left,
            const std::shared_ptr<Filter> &right)
-        : _type(BINARY), _logical_op(logical_op), _left(left), _right(right) {}
+        : _type(BINARY), _logical_op(logical_op), _left(left), _right(right) {
+            FMA_LOG() << "BINARY Filter is created. ";
+        }
 
     Filter(Filter &&rhs) noexcept
         : _type(rhs._type),
@@ -274,6 +276,26 @@ class Filter {
         case lgraph::LBR_XOR:
             return _left && _right &&
                    (_left->DoFilter(ctx, record) != _right->DoFilter(ctx, record));
+        default:
+            return false;
+        }
+    }
+
+    virtual bool DoFilterVersion(cypher::RTContext *ctx, const cypher::Record &record, bool* flag) {
+        switch (_logical_op) {
+        case lgraph::LBR_EMPTY:
+            return _left && _left->DoFilterVersion(ctx, record, flag);
+        case lgraph::LBR_NOT:
+            return _left && !_left->DoFilterVersion(ctx, record, flag);
+        case lgraph::LBR_AND:
+            return _left && _right &&
+                   (_left->DoFilterVersion(ctx, record, flag) && _right->DoFilterVersion(ctx, record, flag));
+        case lgraph::LBR_OR:
+            return _left && _right &&
+                   (_left->DoFilterVersion(ctx, record, flag) || _right->DoFilterVersion(ctx, record, flag));
+        case lgraph::LBR_XOR:
+            return _left && _right &&
+                   (_left->DoFilterVersion(ctx, record, flag) != _right->DoFilterVersion(ctx, record, flag));
         default:
             return false;
         }
@@ -441,6 +463,39 @@ class RangeFilter : public Filter {
         case lgraph::LBR_LE:
             FMA_LOG() << "LBR_LE";
             return !(left > right);
+        case lgraph::LBR_GE:
+            FMA_LOG() << "LBR_GE";
+            return !(left < right);
+        default:
+            return false;
+        }
+    }
+
+    bool DoFilterVersion(cypher::RTContext *ctx, const cypher::Record &record, bool* flag) {
+        FMA_LOG() << "DoFilter in filter.h is invoked";
+        auto left = _ae_left.Evaluate(ctx, record);
+        auto right = _ae_right.Evaluate(ctx, record);
+        FMA_LOG() << "record: " << record.ToString();
+        FMA_LOG() << "left: " << left.ToString();
+        FMA_LOG() << "right: " << right.ToString();
+        if (left.type != right.type) return false;
+        switch (_compare_op) {
+        case lgraph::LBR_EQ:
+            FMA_LOG() << "LBR_EQ";
+            return left == right;
+        case lgraph::LBR_NEQ:
+            FMA_LOG() << "LBR_NEQ";
+            return left != right;
+        case lgraph::LBR_LT:
+            FMA_LOG() << "LBR_LT";
+            return left < right;
+        case lgraph::LBR_GT:
+            FMA_LOG() << "LBR_GT";
+            return left > right;
+        case lgraph::LBR_LE:
+            FMA_LOG() << "LBR_LE";
+            *flag = left > right;
+            return !(*flag);
         case lgraph::LBR_GE:
             FMA_LOG() << "LBR_GE";
             return !(left < right);

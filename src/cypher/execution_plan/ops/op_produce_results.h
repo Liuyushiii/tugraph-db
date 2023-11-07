@@ -35,12 +35,11 @@ static void RRecordToURecord(
     if (header.empty()) {
         return;
     }
-    FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧RRecordToURecord⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
     FMA_LOG() << "header: ";
     for (auto item: header){
         FMA_LOG() << "  " << item.first << ", " << static_cast<uint16_t>(item.second);
     }
-
+    FMA_LOG() << "header_size: "<< header.size();
     for (size_t index = 0; index < header.size(); index++) {
         FMA_LOG() << "v: " << record_ptr->values[index].ToString();
         auto &v = record_ptr->values[index];
@@ -134,9 +133,10 @@ static void RRecordToURecord(
                     ", header type: " + std::to_string(uint16_t(header_type)));
             }
         }
-
+        /*
         if (entry_type == cypher::Entry::CONSTANT) {
             FMA_LOG() << "entry_type == cypher::Entry::CONSTANT";
+            //modify
             if (header_type == lgraph_api::LGraphType::PATH) {
                 using Vertex = lgraph_api::traversal::Vertex;
                 using Path = lgraph_api::traversal::Path;
@@ -181,7 +181,61 @@ static void RRecordToURecord(
                 continue;
             }
         }
-
+        */
+        
+        //new append
+        if (entry_type == cypher::Entry::CONSTANT) {
+            FMA_LOG() << "entry_type == cypher::Entry::CONSTANT with Version";
+            //modify
+            if (header_type == lgraph_api::LGraphType::PATH) {
+                using Vertex = lgraph_api::traversal::Vertex;
+                using Path = lgraph_api::traversal::Path;
+                using Edge = lgraph_api::traversal::Edge;
+                std::regex regex_word("(E|V)\\[([0-9]+|([0-9]+_[0-9]+_[0-9]+_[0-9]+_[0-9]+_[0-9]+))\\]");
+                std::smatch match_group;
+                auto node_str = v.constant.array->at(0).ToString();
+                FMA_LOG() << "node_str: "<<node_str;
+                CYPHER_THROW_ASSERT(std::regex_match(node_str, match_group, regex_word));
+                auto start = static_cast<size_t>(std::stoll(match_group[2].str()));
+                FMA_LOG() << "start: "<<start;
+                Path path{Vertex(start)};
+                std::regex split_word("_");
+                for (auto &path_pattern : *v.constant.array) {
+                    auto path_pattern_str = path_pattern.ToString();
+                    CYPHER_THROW_ASSERT(
+                        std::regex_match(path_pattern_str, match_group, regex_word));
+                    auto type = match_group[1].str();
+                    if (type == "V") continue;
+                    auto ids = match_group[2].str();
+                    std::sregex_token_iterator id(ids.begin(), ids.end(), split_word, -1);
+                    auto start = static_cast<size_t>(std::stoll(id++->str()));
+                    auto end = static_cast<size_t>(std::stoll(id++->str()));
+                    auto lid = static_cast<uint16_t>(std::stoll(id++->str()));
+                    auto tid = static_cast<int64_t>(std::stoll(id++->str()));
+                    auto eid = static_cast<uint16_t>(std::stoll(id++->str()));
+                    auto version = static_cast<size_t>(std::stoll(id++->str()));
+                    bool forward = true;
+                    FMA_LOG() << "start: "<<start<<" end: "<<end<<" lid: "<<lid<<" tid: "<<tid<<" eid: "<<eid<<" version: "<<version;
+                    if (path.GetEndVertex().GetId() != start) {
+                        auto tmp_id = start;
+                        forward = false;
+                        start = end;
+                        end = tmp_id;
+                    }
+                    path.AppendWithVersion(Edge(start, lid, tid, end, eid, version, forward));
+                }
+                record.InsertWithVersion(header[index].first, path, txn);
+                continue;
+            } else {
+                if (v.constant.array != nullptr) {
+                    record.Insert(header[index].first, lgraph_api::FieldData(v.ToString()));
+                } else {
+                    record.Insert(header[index].first, v.constant.scalar);
+                }
+                continue;
+            }
+        }
+        
         if (entry_type == cypher::Entry::UNKNOWN) {
             FMA_LOG() << "entry_type == cypher::Entry::UNKNOWN";
             if (v.constant.array != nullptr) {
@@ -196,6 +250,7 @@ static void RRecordToURecord(
             "unhandled record entry type: " + cypher::Entry::ToString(v.type) +
             ", header type: " + std::to_string(uint16_t(header_type)));
     }
+    FMA_LOG() << "header_size_end: "<< header.size();
 }
 
 namespace cypher {
@@ -234,7 +289,10 @@ class ProduceResults : public OpBase {
         auto res = child->Consume(ctx);
         if (res != OP_OK) return res;
         auto record = ctx->result_->MutableRecord();
+
+        FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧ RRecordToURecord start ⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
         RRecordToURecord(ctx->txn_.get(), ctx->result_->Header(), child->record, *record);
+        FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧ RRecordToURecord finished⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
         return OP_OK;
     }
 

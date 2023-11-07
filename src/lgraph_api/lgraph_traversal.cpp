@@ -13,7 +13,7 @@
  */
 
 #include "lgraph/lgraph_traversal.h"
-
+#include "resultset/record.h"
 namespace lgraph_api {
 
 namespace traversal {
@@ -519,11 +519,16 @@ Vertex::Vertex(size_t vid) : vid_(vid) {}
 size_t Vertex::GetId() const { return vid_; }
 
 Edge::Edge(size_t start, uint16_t lid, uint64_t tid, size_t end, size_t eid, bool forward)
-    : start_(start), end_(end), eid_(eid), lid_(lid), tid_(tid), forward_(forward) {}
+    : start_(start), end_(end), eid_(eid), lid_(lid), tid_(tid), version_(0), forward_(forward) {}
+
+Edge::Edge(size_t start, uint16_t lid, uint64_t tid, size_t end, size_t eid, size_t version, bool forward)
+    : start_(start), end_(end), eid_(eid), lid_(lid), tid_(tid), version_(version), forward_(forward) {}
 
 Vertex Edge::GetStartVertex() const { return Vertex(start_); }
 
 Vertex Edge::GetEndVertex() const { return Vertex(end_); }
+
+Vertex Edge::GetVersion() const { return Vertex(version_); }
 
 uint16_t Edge::GetLabelId() const { return lid_; }
 
@@ -593,8 +598,21 @@ void Path::Append(const Edge &edge) {
     if (ids_.back() != edge.start_) {
         throw std::runtime_error("The edge's start doesn't match the path's end.");
     }
+    FMA_LOG() << "Append edge: "<< edge.start_<<"-"<<edge.end_;
     dirs_.push_back(edge.forward_);
     lids_.push_back(edge.lid_);
+    ids_.push_back(edge.eid_);
+    ids_.push_back(edge.end_);
+}
+//new append
+void Path::AppendWithVersion(const Edge &edge) {
+    if (ids_.back() != edge.start_) {
+        throw std::runtime_error("The edge's start doesn't match the path's end.");
+    }
+    FMA_LOG() << "Append edge: "<< edge.start_<<"-"<<edge.end_<<"-"<<edge.version_;
+    dirs_.push_back(edge.forward_);
+    lids_.push_back(edge.lid_);
+    ids_.push_back(edge.version_);
     ids_.push_back(edge.eid_);
     ids_.push_back(edge.end_);
 }
@@ -619,6 +637,14 @@ Edge Path::GetNthEdge(size_t n) const {
     }
     return Edge(ids_[0 + n * 2], lids_[n], 0, ids_[2 + n * 2], ids_[1 + n * 2], dirs_[n]);
 }
+//new append
+Edge Path::GetNthEdgeWithVersion(size_t n) const {
+    size_t length = dirs_.size();
+    if (n >= length) {
+        throw std::runtime_error("Access out of range.");
+    }
+    return Edge(ids_[0 + n * 3], lids_[n], 0, ids_[3 + n * 3], ids_[2 + n * 3], ids_[1 + n * 3],dirs_[n]);
+}
 
 Vertex Path::GetNthVertex(size_t n) const {
     size_t length = dirs_.size();
@@ -626,6 +652,14 @@ Vertex Path::GetNthVertex(size_t n) const {
         throw std::runtime_error("Access out of range.");
     }
     return Vertex(ids_[0 + n * 2]);
+}
+
+Vertex Path::GetNthVertexWithVersion(size_t n) const {
+    size_t length = dirs_.size();
+    if (n > length) {
+        throw std::runtime_error("Access out of range.");
+    }
+    return Vertex(ids_[0 + n * 3]);
 }
 
 IteratorHelper::IteratorHelper(Transaction &txn) : txn_(txn) {}

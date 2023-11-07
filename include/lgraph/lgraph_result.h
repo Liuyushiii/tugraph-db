@@ -156,6 +156,9 @@ class Record {
      */
     void Insert(const std::string &fname, const traversal::Path &path,
                 lgraph_api::Transaction* txn);
+    //new append
+    void InsertWithVersion(const std::string &fname, const traversal::Path &path,
+                lgraph_api::Transaction* txn);
 #endif
 
     /**

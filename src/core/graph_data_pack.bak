@@ -71,31 +71,13 @@ enum PackType {
  *                  [8-byte temporal_id] + [5-byte src_id] + [4-byte eid]
  */
 class KeyPacker {
-    // 初始偏移量（0）
-    static const size_t FID_OFF = 0;                                                // first vid
-    // 边方向偏移量 (0 + VID_SIZE)
-    static const size_t PT_OFF = FID_OFF + ::lgraph::_detail::VID_SIZE;             // pair type
-    // new append
-    // 版本偏移量 (0 + VID_SIZE + 1)
-    static const size_t VER_OFF = PT_OFF + 1;
-    // 标签偏移量 (0 + VID_SIZE + 1 + VERSION_SIZE)
-    static const size_t LID_OFF = VER_OFF + ::lgraph::_detail::VID_SIZE;            
-                               // label
-
-    // static const size_t LID_OFF = PT_OFF + 1;    
-    // primary id 偏移量
-    static const size_t TID_OFF = LID_OFF + ::lgraph::_detail::LID_SIZE;            // primary id
-    // 终点 id 偏移量
-    static const size_t SID_OFF = TID_OFF + ::lgraph::_detail::TID_SIZE;            // second vid
-    // edge id 偏移量
-    static const size_t EID_OFF = SID_OFF + ::lgraph::_detail::VID_SIZE;            // edge id
-    // new append
-    // version 偏移量
-    // static const size_t VER_OFF = EID_OFF + ::lgraph::_detail::EID_SIZE;            // version id
-    // edge key大小
+    static const size_t FID_OFF = 0;                                      // first vid
+    static const size_t PT_OFF = FID_OFF + ::lgraph::_detail::VID_SIZE;   // pair type
+    static const size_t LID_OFF = PT_OFF + 1;                             // label
+    static const size_t TID_OFF = LID_OFF + ::lgraph::_detail::LID_SIZE;  // primary id
+    static const size_t SID_OFF = TID_OFF + ::lgraph::_detail::TID_SIZE;  // second vid
+    static const size_t EID_OFF = SID_OFF + ::lgraph::_detail::VID_SIZE;  // edge id
     static const size_t EDGE_KEY_SIZE = EID_OFF + ::lgraph::_detail::EID_SIZE;
-    // new append （替换了上面的方法）
-    // static const size_t EDGE_KEY_SIZE = VER_OFF + ::lgraph::_detail::VID_SIZE;
 
     /**
      * Gets pack type given the pointer to key.
@@ -171,20 +153,8 @@ class KeyPacker {
      * @return  The node type.
      */
     static PackType GetNodeType(const Value& v) {
-        FMA_LOG() << " [GetNodeType] size of v: " << v.Size();
-
-        if (v.Size() > 6){
-            FMA_LOG() << " [GetNodeType] src: " << GetFirstVid(v);
-            FMA_LOG() << " [GetNodeType] dst: " << GetSecondVid(v);
-            FMA_LOG() << " [GetNodeType] version: " << GetVersion(v);
-        }
-
         if (v.Size() == ::lgraph::_detail::VID_SIZE) return PackType::PACKED_DATA;
         return GetPackType(v.Data() + PT_OFF);
-    }
-
-    static VertexId GetVersion(const Value& v) {
-        return GetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + VER_OFF);
     }
 
     /**
@@ -267,12 +237,9 @@ class KeyPacker {
      * @return  The key.
      */
     static Value CreateEdgeKey(PackType et, EdgeUid euid) {
-        FMA_LOG() << "CreateEdgeKey is invoked, uid: " << euid.ToString();
         Value v(EDGE_KEY_SIZE);
         SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data(), euid.src);
         SetPackType(v.Data() + PT_OFF, et);
-        // new append 待改
-        // SetNByteIntId<::lgraph::_detail::VERSION_SIZE>(v.Data() + VERSION_OFF, (int64_t)0);
         SetNByteIntId<::lgraph::_detail::LID_SIZE>(v.Data() + LID_OFF, euid.lid);
         SetNByteIntId<::lgraph::_detail::TID_SIZE>(v.Data() + TID_OFF, euid.tid);
         SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF, euid.dst);
@@ -285,18 +252,6 @@ class KeyPacker {
         Value v(EDGE_KEY_SIZE);
         SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data(), euid.src);
         SetPackType(v.Data() + PT_OFF, et);
-        // SetNByteIntId<::lgraph::_detail::LID_SIZE>(v.Data() + LID_OFF, euid.lid);
-        // SetNByteIntId<::lgraph::_detail::TID_SIZE>(v.Data() + TID_OFF, euid.tid);
-        // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF, euid.dst);
-        // SetNByteIntId<::lgraph::_detail::EID_SIZE>(v.Data() + EID_OFF, euid.eid);
-        // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + VER_OFF, euid.verid);
-        FMA_LOG() << "[CreateEdgeKeyVersion] src: " << euid.src << " dst: " << euid.dst << " ver: " << euid.verid;
-        // SetNByteIntId<::lgraph::_detail::LID_SIZE>(v.Data() + LID_OFF+::lgraph::_detail::VID_SIZE, euid.lid);
-        // SetNByteIntId<::lgraph::_detail::TID_SIZE>(v.Data() + TID_OFF+::lgraph::_detail::VID_SIZE, euid.tid);
-        // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF+::lgraph::_detail::VID_SIZE, euid.dst);
-        // SetNByteIntId<::lgraph::_detail::EID_SIZE>(v.Data() + EID_OFF+::lgraph::_detail::VID_SIZE, euid.eid);
-        // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + VER_OFF+::lgraph::_detail::VID_SIZE, euid.verid);
-        SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + VER_OFF, euid.verid);
         SetNByteIntId<::lgraph::_detail::LID_SIZE>(v.Data() + LID_OFF, euid.lid);
         SetNByteIntId<::lgraph::_detail::TID_SIZE>(v.Data() + TID_OFF, euid.tid);
         SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF, euid.dst);
@@ -358,26 +313,15 @@ class KeyPacker {
         return CreateEdgeKey(PackType::IN_EDGE, euid);
     }
 
-    static Value CreateInEdgeKeyVersion(EdgeUid euid) {
-        FMA_LOG() << "CreateInEdgeKeyVersion: " << euid.ToString();
-        return CreateEdgeKeyVersion(PackType::IN_EDGE, euid);
-    }
     /**
      * Creates key for an OutEdge node.
      *
      * @param   euid    EdgeUid of an OutEdge node.
      *
-     * 
      * @return  The new out edge key.
      */
     static Value CreateOutEdgeKey(EdgeUid euid) {
         return CreateEdgeKey(PackType::OUT_EDGE, euid);
-    }
-
-    static Value CreateOutEdgeKeyVersion(EdgeUid euid) {
-        // return CreateEdgeKey(PackType::OUT_EDGE, euid);
-        FMA_LOG() << "CreateOutEdgeKeyVersion: " << euid.ToString();
-        return CreateEdgeKeyVersion(PackType::OUT_EDGE, euid);
     }
 
 #if USELESS_CODE
@@ -473,43 +417,21 @@ class EdgeValue {
     // 3-bit vid size: 0 to 5
     // 2-bit eid size: 0 to 3
     struct SizeIndicator {
-        uint16_t lid_size : 2;
-        uint16_t tid_indicator_size : 1;
-        uint16_t vid_size : 3;
-        uint16_t eid_size : 2;
-        // need to be deleted
-        // uint16_t test_size : 8;
+        uint8_t lid_size : 2;
+        uint8_t tid_indicator_size : 1;
+        uint8_t vid_size : 3;
+        uint8_t eid_size : 2;
 
         SizeIndicator() = default;
         SizeIndicator(size_t l, size_t p, size_t v, size_t e)
-            : lid_size((uint16_t)l), vid_size((uint16_t)v), eid_size((uint16_t)e) {
+            : lid_size((uint8_t)l), vid_size((uint8_t)v), eid_size((uint8_t)e) {
             tid_indicator_size = p == 0 ? 0 : 1;
         }
-        operator uint16_t() const { return *(uint16_t*)this; }
+        operator uint8_t() const { return *(uint8_t*)this; }
 
-        uint16_t PidSize() const { return tid_indicator_size == 0 ? 0 : 8; }
+        uint8_t PidSize() const { return tid_indicator_size == 0 ? 0 : 8; }
 
-        uint16_t TotalSize() const { return lid_size + PidSize() + vid_size + eid_size; }
-    };
-
-    // new append
-    struct SizeIndicatorVersion {
-        uint16_t lid_size : 2;
-        uint16_t tid_indicator_size : 1;
-        uint16_t vid_size : 3;
-        uint16_t eid_size : 2;
-        uint16_t ver_size : 3;
-
-        SizeIndicatorVersion() = default;
-        SizeIndicatorVersion(size_t l, size_t p, size_t v, size_t e, size_t version)
-            : lid_size((uint16_t)l), vid_size((uint16_t)v), eid_size((uint16_t)e), ver_size((uint16_t)version){
-            tid_indicator_size = p == 0 ? 0 : 1;
-        }
-        operator uint16_t() const { return *(uint16_t*)this; }
-
-        uint16_t PidSize() const { return tid_indicator_size == 0 ? 0 : 8; }
-
-        uint16_t TotalSize() const { return lid_size + PidSize() + vid_size + eid_size + ver_size; }
+        size_t TotalSize() const { return lid_size + PidSize() + vid_size + eid_size; }
     };
 
     /** EdgeHeader stores the identifier for an edge, that is, label, vid2 and eid. */
@@ -518,8 +440,6 @@ class EdgeValue {
         TemporalId tid;
         VertexId vid;
         EdgeId eid;
-        // new append
-        VertexId version;
     };
 
     /** EdgeData represents the information of an edge as stored in
@@ -538,7 +458,7 @@ class EdgeValue {
      * @return  The header size.
      */
     static inline size_t GetHeaderSize(const char* p) {
-        return ((SizeIndicator*)p)->TotalSize() + 2;
+        return ((SizeIndicator*)p)->TotalSize() + 1;
     }
 
     /**
@@ -599,12 +519,6 @@ class EdgeValue {
                GetEidSizeRequired(eid);
     }
 
-    // new append
-    static size_t GetHeaderSizeRequiredVersion(LabelId lid, TemporalId tid, VertexId vid, EdgeId eid, VertexId version) {
-        return (size_t)2  // indicator
-               + GetLidSizeRequired(lid) + GetPidSizeRequired(tid) + GetVidSizeRequired(vid) +
-               GetEidSizeRequired(eid) + GetVidSizeRequired(version) ;
-    }
     /**
      * Parse header, get the ids and return pointer right after header.
      *
@@ -659,62 +573,6 @@ class EdgeValue {
         return p;
     }
 
-
-    // new append
-    static const char* ParseHeaderVersion(const char* p, LabelId& lid, TemporalId& tid, VertexId& vid,
-                                   EdgeId& eid, VertexId& version) {
-        SizeIndicatorVersion indicator = *(SizeIndicatorVersion*)p;
-        p+=2; // heihei
-        // get label id
-        size_t lid_size = indicator.lid_size;
-        FMA_DBG_ASSERT(lid_size <= 2);
-        if (lid_size == 0) {
-            lid = 0;
-        } else {
-            lid = (LabelId)::lgraph::_detail::GetNByteIdFromBuf(p, lid_size);
-            p += lid_size;
-        }
-        // get primary id
-        size_t tid_size = indicator.PidSize();
-        FMA_DBG_ASSERT(tid_size == 8 || tid_size == 0);
-        if (tid_size == 0) {
-            tid = 0;
-        } else {
-            tid = ::lgraph::_detail::GetNByteIdFromBuf(p, tid_size);
-            p += tid_size;
-        }
-        // get vertex id
-        size_t vid_size = indicator.vid_size;
-        FMA_DBG_ASSERT(vid_size <= 5);
-        if (vid_size == 0) {
-            vid = 0;
-        } else {
-            FMA_LOG() << "size of vid: " << vid_size;
-            vid = ::lgraph::_detail::GetNByteIdFromBuf(p, vid_size);
-            p += vid_size;
-        }
-        // get edge id
-        size_t eid_size = indicator.eid_size;
-        FMA_DBG_ASSERT(eid_size <= 3);
-        if (eid_size == 0) {
-            eid = 0;
-        } else {
-            eid = ::lgraph::_detail::GetNByteIdFromBuf(p, eid_size);
-            p += eid_size;
-        }
-        // get version
-        size_t ver_size = indicator.ver_size;
-        FMA_LOG() << "size of version: " << ver_size;
-        FMA_DBG_ASSERT(ver_size <= 5);
-        if (ver_size == 0) {
-            version = 0;
-        } else {
-            version = (VertexId)::lgraph::_detail::GetNByteIdFromBuf(p, ver_size);
-            FMA_LOG() << "[ParseHeaderVersion] version :" << version;
-            p += ver_size;
-        }
-        return p;
-    }
     /**
      * Set header to memory pointed by p, return a pointer right after the header The memory must
      * have been properly allocated before calling this function.
@@ -734,7 +592,7 @@ class EdgeValue {
         size_t vid_size = GetVidSizeRequired(vid);
         size_t eid_size = GetEidSizeRequired(eid);
         SizeIndicator indicator(lid_size, tid_size, vid_size, eid_size);
-        *(uint16_t*)p = indicator;
+        *(uint8_t*)p = indicator;
         p++;
         // label id
         if (lid_size != 0) {
@@ -755,51 +613,6 @@ class EdgeValue {
         if (eid_size != 0) {
             ::lgraph::_detail::SetNByteIdToBuf(p, eid_size, eid);
             p += eid_size;
-        }
-        return p;
-    }
-
-    // new append
-    static char* SetHeaderVersion(char* p, LabelId lid, TemporalId tid, VertexId vid, EdgeId eid, VertexId version) {
-        // get indicator
-        size_t lid_size = GetLidSizeRequired(lid);
-        size_t tid_size = GetPidSizeRequired(tid);
-        size_t vid_size = GetVidSizeRequired(vid);
-        size_t eid_size = GetEidSizeRequired(eid);
-        size_t ver_size = GetVidSizeRequired(version);
-        // FMA_LOG() << "lid_size: " << lid_size << ", tid_size: " << tid_size << ", vid_size: " << vid_size << ", eid_size: " << eid_size << ", ver_size: " << ver_size;
-        SizeIndicatorVersion indicator(lid_size, tid_size, vid_size, eid_size, ver_size);
-        *(uint16_t*)p = indicator;
-        p+=2; // heihei
-        // version
-        // if (ver_size != 0) {
-        //     ::lgraph::_detail::SetNByteIdToBuf(p, ver_size, version);
-        //     p += ver_size;
-        // }
-        // label id
-        if (lid_size != 0) {
-            ::lgraph::_detail::SetNByteIdToBuf(p, lid_size, lid);
-            p += lid_size;
-        }
-        // tid
-        if (tid_size != 0) {
-            ::lgraph::_detail::SetNByteIdToBuf(p, tid_size, tid);
-            p += tid_size;
-        }
-        // vid
-        if (vid_size != 0) {
-            ::lgraph::_detail::SetNByteIdToBuf(p, vid_size, vid);
-            p += vid_size;
-        }
-        // eid
-        if (eid_size != 0) {
-            ::lgraph::_detail::SetNByteIdToBuf(p, eid_size, eid);
-            p += eid_size;
-        }
-        // version
-        if (ver_size != 0) {
-            ::lgraph::_detail::SetNByteIdToBuf(p, ver_size, version);
-            p += ver_size;
         }
         return p;
     }
@@ -862,9 +675,8 @@ class EdgeValue {
      * @param [in,out]  last_eid        The last eid seen, will be changed by this function.
      */
     template <typename IT>
-    // beg is a sequential iterator of std::tuple<LabelId, TemporalId, VertexId, DenseString>
-    
-    EdgeValue(const IT& beg,  
+    EdgeValue(const IT& beg,  // is a sequential iterator of std::tuple<LabelId, TemporalId
+                              // VertexId, DenseString>
               const IT& end, LabelId& last_lid, TemporalId& last_tid, VertexId& last_vid,
               EdgeId& last_eid, typename std::decay<IT>::type& next_begin, bool no_split = false) {
         size_t edge_size = 0;
@@ -879,17 +691,9 @@ class EdgeValue {
             TemporalId tid = std::get<1>(*next_begin);
             VertexId vid = std::get<2>(*next_begin);
             const auto& prop = std::get<3>(*next_begin);
-            // new append
-            VertexId version = std::get<4>(*next_begin);
-            // FMA_LOG() << "version1: " << version;
-
             size_t hsize;
             EdgeId eid = (lid != clid || vid != cvid || tid != ctid) ? 0 : ceid + 1;
-            // hsize = GetHeaderSizeRequired(lid, tid, vid, eid);
-
-            // new append (替换了上面的代码)
-            hsize = GetHeaderSizeRequiredVersion(lid, tid, vid, eid, version);
-
+            hsize = GetHeaderSizeRequired(lid, tid, vid, eid);
             if (!no_split && next_begin != beg &&           // at least include one edge
                 edge_size                      // size so far
                         + hsize + prop.size()  // new edge size
@@ -906,26 +710,17 @@ class EdgeValue {
             n_edges++;
         }
         // allocate space for edges and the offsets
-        // 预分配空间
         v_.Resize(edge_size                                     // all edges
                   + NOffsets(n_edges) * sizeof(PackDataOffset)  // offset size
                   + 1);                                         // n_
-        // EdgeValue的结构可以表示为
-        //      n_              1字节                      边的总数
-        //      offsets         4 * (n_ - 1)字节           每个边在EdgeValue中的偏移量
-        //      edge            变长                       边的数据
-        // 记录 边 的数量
         StoreN(n_edges);
-        // 所有边的偏移值的数组 所在的位置
+        // write edges
         char* offsets = v_.Data() + 1;
-        // 获得第 0 条边在EdgeValue中的偏移量
         size_t eoff = GetNthEdgeOffset(0);
         char* buf = v_.Data() + eoff;
         for (auto it = beg; it != next_begin; ++it) {
             if (it != beg) {
                 // first edge does not need offset
-                // 第一条边不需要记录偏移量（即下标为1的地方）
-                // 如果不是第一条边，则记录 偏移值
                 ::lgraph::_detail::SetOffset(offsets, (it - beg) - 1, buf - v_.Data());
             }
             // write edge
@@ -933,26 +728,11 @@ class EdgeValue {
             TemporalId tid = std::get<1>(*it);
             VertexId vid = std::get<2>(*it);
             const auto& prop = std::get<3>(*it);
-
-            // new append
-            VertexId version = std::get<4>(*it);
-            // FMA_LOG() << "version2: " << version;
-
             last_eid = (lid != last_lid || vid != last_vid || tid != last_tid) ? 0 : last_eid + 1;
             last_lid = lid;
             last_tid = tid;
             last_vid = vid;
-            // buf = SetHeader(buf, lid, tid, vid, last_eid);
-
-            // size_t before_set = buf - v_.Data();
-
-            // new append（替换了上面的代码）
-            // 只有同起点、终点的边才会有不同的eid，否则都是0
-            buf = SetHeaderVersion(buf, lid, tid, vid, last_eid, version);
-
-            // size_t after_set = buf - v_.Data();
-            // FMA_LOG() << "size of header: " << after_set - before_set;
-
+            buf = SetHeader(buf, lid, tid, vid, last_eid);
             memcpy(buf, prop.data(), prop.size());
             buf += prop.size();
         }
@@ -979,12 +759,6 @@ class EdgeValue {
         prop_size = GetNthEdge(n + 1) - prop;
     }
 
-    void ParseNthEdgeVersion(size_t n, LabelId& lid, TemporalId& tid, VertexId& vid, EdgeId& eid, VertexId& version,
-                      const char*& prop, size_t& prop_size) const {
-        const char* p = GetNthEdge(n);
-        prop = ParseHeaderVersion(p, lid, tid, vid, eid, version);
-        prop_size = GetNthEdge(n + 1) - prop;
-    }
     /**
      * Gets nth edge data
      *
@@ -995,12 +769,6 @@ class EdgeValue {
     EdgeData GetNthEdgeData(size_t n) const {
         EdgeData ed;
         ParseNthEdge(n, ed.lid, ed.tid, ed.vid, ed.eid, ed.prop, ed.psize);
-        return ed;
-    }
-
-    EdgeData GetNthEdgeDataVersion(size_t n) const {
-        EdgeData ed;
-        ParseNthEdgeVersion(n, ed.lid, ed.tid, ed.vid, ed.eid, ed.version, ed.prop, ed.psize);
         return ed;
     }
 
@@ -1044,7 +812,6 @@ class EdgeValue {
             size_t prop_size;
             ParseNthEdge(p, ll, pp, vv, ee, prop, prop_size);
             int cmp;
-            FMA_LOG() << "  beg:" <<  beg << ", vid: " << vv << ", target_vid: " << vid << ", lid: " << ll << ", tid: " << pp<< ", eid: " << ee;
             // compare (lid, vid, eid)
             if (lid < ll)
                 cmp = -1;
@@ -1063,7 +830,6 @@ class EdgeValue {
             // binary search
             if (cmp == 0) {
                 found = true;
-                FMA_LOG() << "index of edge: " << p;
                 return p;
             } else if (cmp == -1) {
                 end = p;
@@ -1074,56 +840,6 @@ class EdgeValue {
         return end;
     }
 
-
-    // new append
-    size_t SearchEdgeVersion(LabelId lid, TemporalId tid, VertexId vid, EdgeId eid, VertexId version, bool& found) const {
-        found = false;
-        size_t beg = 0;
-        size_t end = n_;
-        while (beg < end) {
-            size_t p = (beg + end) / 2;
-            LabelId ll;
-            TemporalId pp;
-            VertexId vv;
-            VertexId vversion_;
-            EdgeId ee;
-            const char* prop;
-            size_t prop_size;
-            ParseNthEdgeVersion(p, ll, pp, vv, ee, vversion_, prop, prop_size);
-            int cmp;
-            FMA_LOG() << "  beg:" <<  beg << ", vid: " << vv << ", target_vid: " << vid << ", lid: " << ll << ", tid: " << pp<< ", eid: " << ee << ", version: " << version;
-            // compare (lid, vid, eid)
-            if(version < vversion_)
-                cmp = -1;
-            else if(version > vversion_)
-                cmp = 1;
-            else if (lid < ll)
-                cmp = -1;
-            else if (lid > ll)
-                cmp = 1;
-            else if (tid < pp)
-                cmp = -1;
-            else if (tid > pp)
-                cmp = 1;
-            else if (vid < vv)
-                cmp = -1;
-            else if (vid > vv)
-                cmp = 1;
-            else
-                cmp = eid < ee ? -1 : (eid > ee ? 1 : 0);
-            // binary search
-            if (cmp == 0) {
-                found = true;
-                FMA_LOG() << "index of edge: " << p;
-                return p;
-            } else if (cmp == -1) {
-                end = p;
-            } else {
-                beg = p + 1;
-            }
-        }
-        return end;
-    }
     /**
      * Updates the nth edge and return size diff
      *
@@ -1243,21 +959,13 @@ class EdgeValue {
      * @return  The key.
      */
     Value CreateOutEdgeKey(VertexId src) const {
-        // 获取最后一条边的eid，version
         char* e = GetNthEdge(GetEdgeCount() - 1);
         LabelId lid;
         TemporalId tid;
         VertexId vid;
         EdgeId eid;
-        VertexId version_id;
-        // ParseHeader(e, lid, tid, vid, eid);
-        // return KeyPacker::CreateOutEdgeKey(EdgeUid(src, vid, lid, tid, eid));
-        // new append (替换了上面的代码)
-        ParseHeaderVersion(e, lid, tid, vid, eid, version_id);
-        FMA_LOG() << "parsed version in createOutEdge: " << version_id;
-        EdgeUid euid = EdgeUid(src, vid, lid, tid, eid);
-        euid.verid = version_id;
-        return KeyPacker::CreateOutEdgeKeyVersion(euid);
+        ParseHeader(e, lid, tid, vid, eid);
+        return KeyPacker::CreateOutEdgeKey(EdgeUid(src, vid, lid, tid, eid));
     }
 
     /**
@@ -1273,15 +981,8 @@ class EdgeValue {
         TemporalId tid;
         VertexId vid;
         EdgeId eid;
-        VertexId version_id;
-        // ParseHeader(e, lid, tid, vid, eid);
-        // return KeyPacker::CreateInEdgeKey(EdgeUid(dst, vid, lid, tid, eid));
-        // new append (替换了上面的代码)
-        ParseHeaderVersion(e, lid, tid, vid, eid, version_id);
-        FMA_LOG() << "parsed version in createInEdge: " << version_id;
-        EdgeUid euid = EdgeUid(dst, vid, lid, tid, eid);
-        euid.verid = version_id;
-        return KeyPacker::CreateInEdgeKeyVersion(euid);
+        ParseHeader(e, lid, tid, vid, eid);
+        return KeyPacker::CreateInEdgeKey(EdgeUid(dst, vid, lid, tid, eid));
     }
 
     /**
@@ -1316,11 +1017,7 @@ class EdgeValue {
     }
 
     // get the memory buffer for n-th edge
-    char* GetNthEdge(size_t n) const {
-        size_t off = GetNthEdgeOffset(n);
-        FMA_LOG() << "offset of edge " << n << " is: " << off;
-        return v_.Data() + off; 
-    }
+    char* GetNthEdge(size_t n) const { return v_.Data() + GetNthEdgeOffset(n); }
 
     // insert an edge at position p, and return the number of bytes grown
     int64_t InsertAtPos(size_t p, LabelId lid, TemporalId tid, VertexId vid, EdgeId eid,
@@ -1497,7 +1194,6 @@ class PackedDataValue {
 
     Value GetOutEdgeData() const {
         size_t off = GetOutEdgeValueOff();
-        FMA_LOG() << "OutEdgeValueOff: " << off << ", InEdgeValueOff: " << GetInEdgeValueOff();
         return Value(v_.Data() + off, GetInEdgeValueOff() - off);
     }
 

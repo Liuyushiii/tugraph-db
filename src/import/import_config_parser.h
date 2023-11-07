@@ -517,6 +517,24 @@ struct CsvDesc {
         return pos;
     }
 
+    // new append
+    size_t GetEdgeVerColumnIDExcludeSkip() const {
+        bool find = false;
+        size_t pos = 0;
+        for (size_t i = 0; i < columns.size(); ++i) {
+            if (columns[i] == KeyWordFunc::GetStrFromKeyWord(KeyWord::SKIP)) {
+                continue;
+            }
+            if (columns[i] == "blockNumber") {
+                find = true;
+                break;
+            }
+            pos++;
+        }
+        if (!find) throw std::runtime_error("VERSION_ID not found in columns");
+        return pos;
+    }
+
     size_t GetEdgeDstColumnIDExcludeSkip() const {
         bool find = false;
         size_t pos = 0;

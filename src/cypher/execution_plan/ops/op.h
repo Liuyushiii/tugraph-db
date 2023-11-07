@@ -158,9 +158,9 @@ struct OpBase {
     void PushInBetween(OpBase *onlyChild) {
         /* Disconnect every child from parent
          * Add each parent's child to only child. */
-        FMA_LOG() << "push " << onlyChild->name << " between " << this->name << " and its children";
+        // FMA_LOG() << "push " << onlyChild->name << " between " << this->name << " and its children";
         for (auto child : children) {
-            FMA_LOG() << "  child of " << this->name << " : " << child->name;
+            // FMA_LOG() << "  child of " << this->name << " : " << child->name;
             onlyChild->AddChild(child);
         }
         children.clear();

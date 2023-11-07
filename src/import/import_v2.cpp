@@ -774,8 +774,8 @@ void lgraph::import_v2::Importer::WriteVertex(LightningGraph* db, const std::str
             for (size_t i = 0; i < vds.size(); i++) {
                 VidType vid = vds[i].vid;
                 auto& vprop = vds[i].data;
-                std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>> outs;
-                std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>> ins;
+                std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>> outs;
+                std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>> ins;
                 if (oeit != oes.end() && oeit->vid1 < vid) {
                     OnMissingVertexOffline(label, oeit->vid1, config_.continue_on_error);
                 }
@@ -783,11 +783,11 @@ void lgraph::import_v2::Importer::WriteVertex(LightningGraph* db, const std::str
                     OnMissingVertexOffline(label, ieit->vid1, config_.continue_on_error);
                 }
                 while (oeit != oes.end() && oeit->vid1 == vid) {
-                    outs.emplace_back(oeit->lid, oeit->tid, oeit->vid2, std::move(oeit->prop));
+                    outs.emplace_back(oeit->lid, oeit->tid, oeit->vid2, std::move(oeit->prop), 0);
                     oeit++;
                 }
                 while (ieit != ies.end() && ieit->vid1 == vid) {
-                    ins.emplace_back(ieit->lid, ieit->tid, ieit->vid2, std::move(ieit->prop));
+                    ins.emplace_back(ieit->lid, ieit->tid, ieit->vid2, std::move(ieit->prop), 0);
                     ieit++;
                 }
                 packed_data.emplace_back(
@@ -815,10 +815,10 @@ void lgraph::import_v2::Importer::WriteVertex(LightningGraph* db, const std::str
 
 lgraph::import_v2::Importer::DataForOneVertex lgraph::import_v2::Importer::MakeDataKvs(
     VertexId vid, const DenseString& vdata,
-    std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>>&& outs,
-    std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>>&& ins) {
+    std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>>&& outs,
+    std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>>&& ins) {
     using namespace lgraph::graph;
-    typedef std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString>>::iterator IT;
+    typedef std::deque<std::tuple<LabelId, TemporalId, VertexId, DenseString, VertexId>>::iterator IT;
     // calculate total size, this is just a hint, not very accurate
     size_t total_size = vdata.size();
     for (auto& e : outs) {

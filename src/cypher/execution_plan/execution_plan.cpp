@@ -954,7 +954,7 @@ void ExecutionPlan::_PlaceFilter(std::shared_ptr<lgraph::Filter> f, OpBase *&roo
      * a. constant filter: where 1 = 2
      * b. invalid args: where type(4) = 'ACTED_IN'  */
     if (f->Alias().empty()) {
-        FMA_LOG() << "f->Alias() is empty";
+        // FMA_LOG() << "f->Alias() is empty";
         // find the leaf op
         OpBase *leaf_op = root;
         while (!leaf_op->children.empty()) {
@@ -966,11 +966,11 @@ void ExecutionPlan::_PlaceFilter(std::shared_ptr<lgraph::Filter> f, OpBase *&roo
         // If a filter's LogicalOp is AND, do its subtrees separately
         // 如果f包含多个条件，则递归执行
         if (f->LogicalOp() == lgraph::LogicalOp::LBR_AND) {
-            FMA_LOG() << "f's LogicalOp is AND";
+            // FMA_LOG() << "f's LogicalOp is AND";
             _PlaceFilter(f->Left(), root);
             _PlaceFilter(f->Right(), root);
         } else {
-            FMA_LOG() << "f's LogicalOp is not AND";
+            // FMA_LOG() << "f's LogicalOp is not AND";
             // 对单个where调用_PlaceFilterToNode
             if (!_PlaceFilterToNode(f, root)) {
                 if (f->ContainAlias(root->modifies)) {
@@ -979,7 +979,7 @@ void ExecutionPlan::_PlaceFilter(std::shared_ptr<lgraph::Filter> f, OpBase *&roo
                     opf->AddChild(root);
                     root = opf;
                 } else {
-                    FMA_WARN_STREAM(PlanLogger()) << "ignored filter: " << f->ToString();
+                    // FMA_WARN_STREAM(PlanLogger()) << "ignored filter: " << f->ToString();
                 }
             }
         }
@@ -1003,11 +1003,11 @@ bool ExecutionPlan::_PlaceFilterToNode(std::shared_ptr<lgraph::Filter> &f, OpBas
     // check if rit modifies at least one of f's aliases
     bool containModifies = false;
     for (auto rit = node->children.rbegin(); rit != node->children.rend(); ++rit) {
-        FMA_LOG() << "name of rit: " << (*rit)->name;
+        // FMA_LOG() << "name of rit: " << (*rit)->name;
         for (auto alias : f->Alias())
             if (std::find((*rit)->modifies.begin(), (*rit)->modifies.end(), alias) !=
                 (*rit)->modifies.end()) {
-                FMA_LOG() << "  " << alias << " will be modified";
+                // FMA_LOG() << "  " << alias << " will be modified";
                 containModifies = true;
                 break;
             }
@@ -1022,7 +1022,7 @@ bool ExecutionPlan::_PlaceFilterToNode(std::shared_ptr<lgraph::Filter> &f, OpBas
         }
     // do the filter at rit if containModifies and allModified are true
     if (containModifies && allModified) {
-        FMA_LOG() << "containModifies && allModified";
+        // FMA_LOG() << "containModifies && allModified";
         OpBase *node_filter = new OpFilter(f);
         OpBase *insert = node, *current = node;
         while (current) {
@@ -1035,7 +1035,7 @@ bool ExecutionPlan::_PlaceFilterToNode(std::shared_ptr<lgraph::Filter> &f, OpBas
         insert->PushInBetween(node_filter);
         return true;
     } else {
-        FMA_LOG() << "not contain modify";
+        // FMA_LOG() << "not contain modify";
         // if this filter cannot be placed at rit, try to place this filter
         // to its children
         // 如果不包含任何修改操作，则在下一层继续执行

@@ -730,7 +730,7 @@ void Importer::EdgeDataToSST() {
                                 // new append
                                 const FieldData& ver_fd = line[edgeDataBlock->ver_id_pos];
                                 ver_id = std::stoll(ver_fd.ToString());
-                                // FMA_LOG() << "prev version: " << ver_id;
+                                FMA_LOG() << "prev version: " << ver_id;
 
                                 int64_t tid = edgeDataBlock->has_tid
                                                   ? line[edgeDataBlock->tid_pos].AsInt64() : 0;
@@ -784,6 +784,7 @@ void Importer::EdgeDataToSST() {
                                         continue;
                                     }
                                 }
+
                                 for (size_t i = first_id_pos; i < second_id_pos - 1; i++) {
                                     line[i] = std::move(line[i + 1]);
                                 }
@@ -814,9 +815,9 @@ void Importer::EdgeDataToSST() {
 
                                 
                                 // new append
-                                VertexId ver_id_bigend = boost::endian::native_to_big(ver_id);
-                                // edge_key.append((const char*)&ver_id, sizeof(ver_id));
-                                edge_key.append((const char*)&ver_id_bigend, sizeof(ver_id_bigend));
+                                FMA_LOG() << "current version: " << ver_id;
+                                boost::endian::big_to_native_inplace(ver_id);
+                                edge_key.append((const char*)&ver_id, sizeof(ver_id));
                                 
                                 edge_key.append((const char*)&edgeDataBlock->label_id,
                                                 sizeof(edgeDataBlock->label_id));
@@ -825,17 +826,12 @@ void Importer::EdgeDataToSST() {
                                 edge_key.append((const char*)&edgeDataBlock->start_eid,
                                                 sizeof(edgeDataBlock->start_eid));
 
-                                // new append（转为大端）
-                                // FMA_LOG() << "current version: " << ver_id;
-                                
-                                // FMA_LOG() << "bigend version: " << ver_id_big;
-                                //edge_key.append((const char*)&ver_id_bigend, sizeof(ver_id_bigend));
+                                // edge_key.append((const char*)&ver_id, sizeof(ver_id));
 
                                 vec_kvs.emplace_back(edge_key, record);
 
 
-                                // FMA_LOG() << "src_vid: " << src_vid << ", label_id: " << edgeDataBlock->label_id << ", tid: " << tid << ", dst_vid: " << dst_vid << ", start_eid: " << edgeDataBlock->start_eid << ", ver_id: " << ver_id_bigend;
-                                //FMA_LOG() <<"key_string: "<<edge_key;
+
                                 // ************************************************************
 
 
@@ -844,7 +840,7 @@ void Importer::EdgeDataToSST() {
                                 edge_key.append(1, 0x01);  // in edge flag
 
                                 // new append
-                                edge_key.append((const char*)&ver_id_bigend, sizeof(ver_id_bigend));
+                                edge_key.append((const char*)&ver_id, sizeof(ver_id));
 
                                 edge_key.append((const char*)&edgeDataBlock->label_id,
                                                 sizeof(edgeDataBlock->label_id));
@@ -853,7 +849,7 @@ void Importer::EdgeDataToSST() {
                                 edge_key.append((const char*)&edgeDataBlock->start_eid,
                                                 sizeof(edgeDataBlock->start_eid));
 
-                                //edge_key.append((const char*)&ver_id_bigend, sizeof(ver_id_bigend));
+                                // edge_key.append((const char*)&ver_id, sizeof(ver_id));
                                 
                                 vec_kvs.emplace_back(std::move(edge_key), std::move(record));
                                 edgeDataBlock->start_eid++;
@@ -864,8 +860,6 @@ void Importer::EdgeDataToSST() {
                             LGRAPH_PSORT(vec_kvs.begin(), vec_kvs.end(),
                                          [](const KV& a, const KV& b) { return a.key < b.key; });
                             for (auto& pair : vec_kvs) {
-                                //rocksdb::Slice a=pair.key;
-                                //FMA_LOG() <<"sort_key_string: "<<a.ToString();
                                 sst_file_writer.Put(pair.key,
                                                     {pair.value.Data(), pair.value.Size()});
                             }
@@ -1043,10 +1037,8 @@ void Importer::VertexPrimaryIndexToLmdb() {
     FMA_LOG() << "Write vertex primary index to lmdb, time: " << t2 - t1 << "s";
     rocksdb_vids_.reset(nullptr);
 }
-
-// new append
 typedef std::vector<std::tuple<LabelId, TemporalId,
-                               VertexId, import_v2::DenseString, VertexId>>::iterator IT;
+                               VertexId, import_v2::DenseString>>::iterator IT;
 void Importer::RocksdbToLmdb() {
     auto t1 = fma_common::GetTime();
     std::unique_ptr<rocksdb::DB> rocksdb;
@@ -1134,11 +1126,10 @@ void Importer::RocksdbToLmdb() {
             options.background_purge_on_iterator_cleanup = true;
             options.verify_checksums = false;
             std::unique_ptr<rocksdb::Iterator> iter(rocksdb->NewIterator(options));
-            // new append
             // 出边 <LabelId, TemporalId, VertexId, import_v2::DenseString>
-            std::vector<std::tuple<LabelId, TemporalId, VertexId, import_v2::DenseString, VertexId>> outs;
+            std::vector<std::tuple<LabelId, TemporalId, VertexId, import_v2::DenseString>> outs;
             // 入边 <LabelId, TemporalId, VertexId, import_v2::DenseString>
-            std::vector<std::tuple<LabelId, TemporalId, VertexId, import_v2::DenseString, VertexId>> ins;
+            std::vector<std::tuple<LabelId, TemporalId, VertexId, import_v2::DenseString>> ins;
             std::vector<std::pair<Value, Value>> kvs;
             // 顶点属性<LabelId, VertexId, Value>
             std::vector<std::tuple<LabelId, VertexId, Value>> vertex_property;
@@ -1172,12 +1163,9 @@ void Importer::RocksdbToLmdb() {
                                                  v_property = std::move(v_property),
                                                  e_property = std::move(e_property)]() {
                     Transaction txn = db_->CreateWriteTxn();
-                    FMA_LOG() << "kv start";
                     for (auto& kv : kvs) {
-                        FMA_LOG() << "[throw_kvs_to_lmdb] src: " << lgraph::graph::KeyPacker::GetFirstVid(kv.first) << ", dst: " << lgraph::graph::KeyPacker::GetSecondVid(kv.first) << ", version: " << lgraph::graph::KeyPacker::GetVersion(kv.first) << ", direction: " << lgraph::graph::KeyPacker::GetNodeType(kv.first);
                         txn.ImportAppendDataRaw(kv.first, kv.second);
                     }
-                    FMA_LOG() << "kv finished";
                     txn.RefreshNextVid();
                     for (auto& pro : v_property) {
                         auto s = (Schema*)(txn.GetSchema(std::get<0>(pro), true));
@@ -1200,7 +1188,6 @@ void Importer::RocksdbToLmdb() {
                 // FMA_LOG() << "size of ins: " << ins.size();
                 if (!split) {
                     // CreatePackedDataKey
-                    FMA_LOG() << "Not split, so invoke CreatePackedDataKey";
                     lgraph::graph::VertexValue vov(GetConstRef(vdata));
                     IT next_beg;
                     lgraph::graph::EdgeValue oev(outs.begin(), outs.end(), out_last_lid,
@@ -1217,12 +1204,9 @@ void Importer::RocksdbToLmdb() {
                     lgraph::graph::PackedDataValue::PackData(vov, oev, iev, data);
                     kvs.emplace_back(lgraph::graph::KeyPacker::CreatePackedDataKey(pre_vid),
                                      std::move(data));
-                    FMA_LOG() << "vid: " << pre_vid << ", size of value: " << data.Size();
                     all_kv_size += kvs.back().first.Size() + kvs.back().second.Size();
                 } else {
-                    // 将剩余的部分构造oev
                     // 出边
-                    FMA_LOG() << "Split!!! so invoke CreateOutEdgeKey and CreateInEdgeKey";
                     if (!outs.empty()) {
                         IT next_start;
                         lgraph::graph::EdgeValue oev(outs.begin(), outs.end(), out_last_lid,
@@ -1318,7 +1302,7 @@ void Importer::RocksdbToLmdb() {
                         }
                         total_size += vdata.size();
                     } else {
-                        // FMA_LOG() << "size of key: " << key.size();
+                        FMA_LOG() << "size of key: " << key.size();
                         // key为边的复合键，即k/v表示的是一条边
                         // =================逐个解析各字段=================
                         bool out_edge;
@@ -1327,46 +1311,33 @@ void Importer::RocksdbToLmdb() {
                         VertexId currentId = *(VertexId*)p;
                         boost::endian::big_to_native_inplace(currentId);
                         // to be deleted
-
-                        // direction
                         p += sizeof(VertexId);
                         if (*p == 0) {
                             out_edge = true;
                         } else {
                             out_edge = false;
                         }
+                        p += 1;
 
-                        p+=1;
+                        // to be deleted
                         VertexId versionId = *(VertexId*)p;
                         boost::endian::big_to_native_inplace(versionId);
+                        // to be deleted
+
                         // new append（跳过version字段）
                         p += sizeof(VertexId);
 
-                        // label_id
-                        //p += 1;
                         LabelId labelId = *(LabelId*)p;
                         boost::endian::big_to_native_inplace(labelId);
                         if (out_edge) {
                             edge_count_.at(labelId)++;
                         }
-                        
-                        // tid
                         p += sizeof(LabelId);
                         int64_t tid = *(int64_t*)p;
-
-                        // dst_vid
                         p += sizeof(tid);
                         VertexId vertexId = *(VertexId*)p;
                         boost::endian::big_to_native_inplace(vertexId);
-
-                        // new append (跳过start_eid)
-                        p += sizeof(uint64_t);
-                        // new  append
-                        // p += sizeof(VertexId);
-                        // VertexId versionId = *(VertexId*)p;
-                        // boost::endian::big_to_native_inplace(versionId);
-                        FMA_LOG() << "src_vid: " << currentId << ", direction: " << out_edge << ", version: " << versionId << ", label: " << labelId << ", dst_vid: " << vertexId;
-                        
+                        FMA_LOG() << "pre_vid: " << pre_vid << ", src_vid: " << currentId << ", version: " << versionId << ", label: " << labelId << ", dst_vid: " << vertexId;
                         // =================逐个解析各字段=================
                         // import_v2::DenseString edge_val(val.data(), val.size());
                         // total_size += edge_val.size() + 16;
@@ -1374,7 +1345,6 @@ void Importer::RocksdbToLmdb() {
                         if (out_edge) {
                             // 判断是否需要分离 边属性
                             if (elid_detach_.at(labelId)) {
-                                FMA_LOG() << "elid_detach_";
                                 EdgeUid uid;
                                 uid.src = pre_vid;
                                 uid.lid = labelId;
@@ -1397,18 +1367,17 @@ void Importer::RocksdbToLmdb() {
                                 }
                                 edge_property.emplace_back(
                                     labelId, uid, Value::MakeCopy(val.data(), val.size()));
-                                outs.emplace_back(labelId, tid, vertexId, import_v2::DenseString(), versionId);
+                                outs.emplace_back(labelId, tid, vertexId, import_v2::DenseString());
                             } else {
                                 // 不需要分离 边属性
-                                FMA_LOG() << "not elid_detach_";
                                 outs.emplace_back(labelId, tid, vertexId,
-                                                  import_v2::DenseString(val.data(), val.size()), versionId);
+                                                  import_v2::DenseString(val.data(), val.size()));
                             }
                             total_size += std::get<3>(outs.back()).size() + 16;
                         } else {
                             // 入边
                             ins.emplace_back(labelId, tid, vertexId,
-                                             import_v2::DenseString(val.data(), val.size()), versionId);
+                                             import_v2::DenseString(val.data(), val.size()));
                             total_size += std::get<3>(ins.back()).size() + 16;
                         }
                         // 如果当前 vid 需要的空间已经超过了节点分裂的阈值
