@@ -63,7 +63,7 @@ class NodeIndexSeek : public OpBase {
     }
 
     OpResult Initialize(RTContext *ctx) override {
-        FMA_LOG() << "initialization of op_node_index_seek is invoked";
+        // FMA_LOG() << "initialization of op_node_index_seek is invoked";
         // allocate a new record
         record = std::make_shared<Record>(rec_length_, sym_tab_);
         record->values[node_rec_idx_].type = Entry::NODE;
@@ -105,7 +105,7 @@ class NodeIndexSeek : public OpBase {
          * - otherwise, set node to -1 in case mistaken for the
          *   vertex to be valid.
          * */
-        FMA_LOG() << "RealConsume (op_node_index_seek)";
+        // FMA_LOG() << "RealConsume (op_node_index_seek)";
         // FMA_LOG() << "properties of it in op_node_index_seek: " << it_->Properties();
         // FMA_LOG() << "target values: ";
 
@@ -117,7 +117,7 @@ class NodeIndexSeek : public OpBase {
             return OP_OK;
         }
         
-        FMA_LOG() << "HandOff fail, initialize a new index iterator";
+        // FMA_LOG() << "HandOff fail, initialize a new index iterator";
         // 构建新的迭代器
         while ((size_t)value_rec_idx_ < target_values_.size() - 1) {
             value_rec_idx_++;

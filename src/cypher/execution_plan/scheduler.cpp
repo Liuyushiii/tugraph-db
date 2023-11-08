@@ -64,7 +64,7 @@ bool Scheduler::DetermineReadOnly(cypher::RTContext *ctx,
 void Scheduler::EvalCypher(RTContext *ctx, const std::string &script, ElapsedTime &elapsed) {
 
     // 记录函数进入日志
-    FMA_LOG() << "EvalCypher: " << script;
+    // FMA_LOG() << "EvalCypher: " << script;
 
 
     using namespace parser;
@@ -90,9 +90,9 @@ void Scheduler::EvalCypher(RTContext *ctx, const std::string &script, ElapsedTim
         plan = std::make_shared<ExecutionPlan>();
 
 
-        for (auto item : visitor.GetQuery()) {
-            FMA_LOG() << "SglQuery: " << item.ToString();
-        }
+        // for (auto item : visitor.GetQuery()) {
+            // FMA_LOG() << "SglQuery: " << item.ToString();
+        // }
 
         // 构造 执行计划（包括 过滤器）
         plan->Build(visitor.GetQuery(), visitor.CommandType(), ctx);

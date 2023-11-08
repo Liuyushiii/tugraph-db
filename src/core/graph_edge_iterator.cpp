@@ -23,13 +23,13 @@ EdgeIterator<ET>::EdgeIterator(::lgraph::Transaction* txn, KvTable& table, const
                                bool closest)
     : IteratorBase(txn), it_(txn->GetTxn(), table), impl_(it_) {
 
-    FMA_LOG() << "constructor of EdgeIterator is invoked (cpp): " << euid.ToString();
+    // FMA_LOG() << "constructor of EdgeIterator is invoked (cpp): " << euid.ToString();
     if(euid.verid==0){
-        FMA_LOG() << "Goto is invoked";
+        // FMA_LOG() << "Goto is invoked";
         impl_.Goto(euid, closest);
     }
     else{
-        FMA_LOG() << "GotoVersion is invoked";
+        // FMA_LOG() << "GotoVersion is invoked";
         impl_.GotoVersion(euid, closest);
     }
 }

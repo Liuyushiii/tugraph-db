@@ -36,7 +36,7 @@ class OpFilter : public OpBase {
  public:
     explicit OpFilter(const std::shared_ptr<lgraph::Filter> &filter)
         : OpBase(OpType::FILTER, "Filter"), filter_(filter) {
-        FMA_LOG() << "OpFilter is constructed";
+        // FMA_LOG() << "OpFilter is constructed";
         _state = FilterUninitialized;
     }
 

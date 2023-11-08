@@ -196,7 +196,7 @@ struct Entry {
                 //str.append(cypher::_detail::EdgeUid2String(eit->GetUid())).append("]");
                 //new append
                 str.append(cypher::_detail::EdgeUid2StringWithVersion(eit->GetUid())).append("]");
-                FMA_LOG() << "Relation_record: "<<str;
+                // FMA_LOG() << "Relation_record: "<<str;
                 return str;
             }
         case VAR_LEN_RELP:

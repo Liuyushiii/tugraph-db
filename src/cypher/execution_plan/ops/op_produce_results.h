@@ -35,13 +35,13 @@ static void RRecordToURecord(
     if (header.empty()) {
         return;
     }
-    FMA_LOG() << "header: ";
-    for (auto item: header){
-        FMA_LOG() << "  " << item.first << ", " << static_cast<uint16_t>(item.second);
-    }
-    FMA_LOG() << "header_size: "<< header.size();
+    // FMA_LOG() << "header: ";
+    // for (auto item: header){
+    //     FMA_LOG() << "  " << item.first << ", " << static_cast<uint16_t>(item.second);
+    // }
+    // FMA_LOG() << "header_size: "<< header.size();
     for (size_t index = 0; index < header.size(); index++) {
-        FMA_LOG() << "v: " << record_ptr->values[index].ToString();
+        // FMA_LOG() << "v: " << record_ptr->values[index].ToString();
         auto &v = record_ptr->values[index];
         const auto &entry_type = v.type;
         const auto &header_type = header[index].second;
@@ -185,7 +185,7 @@ static void RRecordToURecord(
         
         //new append
         if (entry_type == cypher::Entry::CONSTANT) {
-            FMA_LOG() << "entry_type == cypher::Entry::CONSTANT with Version";
+            // FMA_LOG() << "entry_type == cypher::Entry::CONSTANT with Version";
             //modify
             if (header_type == lgraph_api::LGraphType::PATH) {
                 using Vertex = lgraph_api::traversal::Vertex;
@@ -250,7 +250,7 @@ static void RRecordToURecord(
             "unhandled record entry type: " + cypher::Entry::ToString(v.type) +
             ", header type: " + std::to_string(uint16_t(header_type)));
     }
-    FMA_LOG() << "header_size_end: "<< header.size();
+    // FMA_LOG() << "header_size_end: "<< header.size();
 }
 
 namespace cypher {
@@ -278,7 +278,7 @@ class ProduceResults : public OpBase {
     /* ProduceResults next operation
      * called each time a new result record is required */
     OpResult RealConsume(RTContext *ctx) override {
-        FMA_LOG() << "RealConsume (op_produce_results)";
+        // FMA_LOG() << "RealConsume (op_produce_results)";
         if (state_ == Uninitialized) {
             Initialize(ctx);
             state_ = Consuming;
@@ -290,9 +290,9 @@ class ProduceResults : public OpBase {
         if (res != OP_OK) return res;
         auto record = ctx->result_->MutableRecord();
 
-        FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧ RRecordToURecord start ⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
+        // FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧ RRecordToURecord start ⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
         RRecordToURecord(ctx->txn_.get(), ctx->result_->Header(), child->record, *record);
-        FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧ RRecordToURecord finished⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
+        // FMA_LOG() << "⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧ RRecordToURecord finished⬧⬧⬧⬧⬧⬧⬧⬧⬧⬧";
         return OP_OK;
     }
 

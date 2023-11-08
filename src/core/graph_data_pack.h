@@ -171,13 +171,13 @@ class KeyPacker {
      * @return  The node type.
      */
     static PackType GetNodeType(const Value& v) {
-        FMA_LOG() << " [GetNodeType] size of v: " << v.Size();
+        // FMA_LOG() << " [GetNodeType] size of v: " << v.Size();
 
-        if (v.Size() > 6){
-            FMA_LOG() << " [GetNodeType] src: " << GetFirstVid(v);
-            FMA_LOG() << " [GetNodeType] dst: " << GetSecondVid(v);
-            FMA_LOG() << " [GetNodeType] version: " << GetVersion(v);
-        }
+        // if (v.Size() > 6){
+        //     FMA_LOG() << " [GetNodeType] src: " << GetFirstVid(v);
+        //     FMA_LOG() << " [GetNodeType] dst: " << GetSecondVid(v);
+        //     FMA_LOG() << " [GetNodeType] version: " << GetVersion(v);
+        // }
 
         if (v.Size() == ::lgraph::_detail::VID_SIZE) return PackType::PACKED_DATA;
         return GetPackType(v.Data() + PT_OFF);
@@ -689,7 +689,7 @@ class EdgeValue {
         if (vid_size == 0) {
             vid = 0;
         } else {
-            FMA_LOG() << "size of vid: " << vid_size;
+            // FMA_LOG() << "size of vid: " << vid_size;
             vid = ::lgraph::_detail::GetNByteIdFromBuf(p, vid_size);
             p += vid_size;
         }
@@ -704,13 +704,13 @@ class EdgeValue {
         }
         // get version
         size_t ver_size = indicator.ver_size;
-        FMA_LOG() << "size of version: " << ver_size;
+        // FMA_LOG() << "size of version: " << ver_size;
         FMA_DBG_ASSERT(ver_size <= 5);
         if (ver_size == 0) {
             version = 0;
         } else {
             version = (VertexId)::lgraph::_detail::GetNByteIdFromBuf(p, ver_size);
-            FMA_LOG() << "[ParseHeaderVersion] version :" << version;
+            // FMA_LOG() << "[ParseHeaderVersion] version :" << version;
             p += ver_size;
         }
         return p;
@@ -1318,7 +1318,7 @@ class EdgeValue {
     // get the memory buffer for n-th edge
     char* GetNthEdge(size_t n) const {
         size_t off = GetNthEdgeOffset(n);
-        FMA_LOG() << "offset of edge " << n << " is: " << off;
+        // FMA_LOG() << "offset of edge " << n << " is: " << off;
         return v_.Data() + off; 
     }
 
@@ -1497,7 +1497,7 @@ class PackedDataValue {
 
     Value GetOutEdgeData() const {
         size_t off = GetOutEdgeValueOff();
-        FMA_LOG() << "OutEdgeValueOff: " << off << ", InEdgeValueOff: " << GetInEdgeValueOff();
+        // FMA_LOG() << "OutEdgeValueOff: " << off << ", InEdgeValueOff: " << GetInEdgeValueOff();
         return Value(v_.Data() + off, GetInEdgeValueOff() - off);
     }
 

@@ -300,8 +300,8 @@ class VIter {
                     const std::string &field, const FieldData &key_start,
                     const FieldData &key_end) {
         FreeIter();
-        FMA_LOG() << "Index Iterator Initialization: ";
-        FMA_LOG() << "label: " << label << " field: " << field << " key_start: " << key_start.ToString() << " key_end: " << key_end.ToString();
+        // FMA_LOG() << "Index Iterator Initialization: ";
+        // FMA_LOG() << "label: " << label << " field: " << field << " key_start: " << key_start.ToString() << " key_end: " << key_end.ToString();
         _txn = txn;
         _type = type;
         if (_type == INDEX_ITER) {
@@ -874,16 +874,16 @@ class EIter {
     bool Next() {
         switch (_type) {
         case OUT_EDGE:
-            FMA_LOG() << "Next() : OUT_EDGE";
+            // FMA_LOG() << "Next() : OUT_EDGE";
             return (_oeit && _oeit->Next());
         case IN_EDGE:
-            FMA_LOG() << "Next() : IN_EDGE";
+            // FMA_LOG() << "Next() : IN_EDGE";
             return (_ieit && _ieit->Next());
         case TYPE_OUT_EDGE:
-            FMA_LOG() << "Next() : TYPE_OUT_EDGE";
+            // FMA_LOG() << "Next() : TYPE_OUT_EDGE";
             return (_toeit && _toeit->Next());
         case TYPE_IN_EDGE:
-            FMA_LOG() << "Next() : TYPE_IN_EDGE";
+            // FMA_LOG() << "Next() : TYPE_IN_EDGE";
             return (_tieit && _tieit->Next());
         case BI_EDGE:
             if (_is_out) {

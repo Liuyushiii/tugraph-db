@@ -349,7 +349,7 @@ class VertexIndexIterator : public ::lgraph::IteratorBase {
      * \return  True if it succeeds, otherwise false.
      */
     bool Next() {
-        FMA_LOG() << "Next() of VertexIndexIterator is invoked";
+        // FMA_LOG() << "Next() of VertexIndexIterator is invoked";
         // if we haven't reach the end of the current VertexIndexValue,
         // just move forward
         if (!unique_ && pos_ < iv_.GetVidCount() - 1) {
