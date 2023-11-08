@@ -214,32 +214,7 @@ class ExpandAll : public OpBase {
         // FMA_LOG() << "initialization of op_expand_all is invoked";
         // 判断 edge_filter 是否为空
         if (edge_filter_){
-            // FMA_LOG() << "filter is not null";
-            // 判断 filter 类型是否为 RANGE_FILTER
-            if (edge_filter_->Type() == lgraph::Filter::Type::RANGE_FILTER){
-                FMA_LOG() << "edge_filter_ is a range filter";
-                // 类型转换
-                auto range_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_);
-                // ae_right: 常量
-                auto ae_right = range_filter->GetAeRight();
-                if (ae_right.type == ArithExprNode::AR_EXP_OPERAND){
-                    // FMA_LOG() << ae_right.operand.constant;
-                    FMA_LOG() << "AR_EXP_OPERAND";
-                    FMA_LOG() << ae_right.operand.constant.ToString();
-                }
-                else if (ae_right.type == ArithExprNode::AR_EXP_OP){
-                    // FMA_LOG() << ae_right.operand.constant;
-                    FMA_LOG() << "AR_EXP_OP";
-                }
-                else{
-                    // FMA_LOG() << ae_right.operand.constant;
-                    FMA_LOG() << "AR_AST_EXP";
-                }
-            }
-            else if (edge_filter_->Type() == lgraph::Filter::Type::UNARY){
-                FMA_LOG() << "edge_filter_ is a UNARY filter";
-            }
-            else if (edge_filter_->Type() == lgraph::Filter::Type::BINARY){
+            if (edge_filter_->Type() == lgraph::Filter::Type::BINARY){
                 // FMA_LOG() << "edge_filter_ is a BINARY filter";
                 auto left_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_->Left());
                 auto ae_right1 = left_filter->GetAeRight();
@@ -248,19 +223,7 @@ class ExpandAll : public OpBase {
                 auto right_filter = std::dynamic_pointer_cast<lgraph::RangeFilter>(edge_filter_->Right());
                 auto ae_right2 = right_filter->GetAeRight();
                 versionr_ = std::stoll(ae_right2.operand.constant.ToString());
-                // FMA_LOG() << "ae_right2: " << versionr_;
-                // FMA_LOG() << "left_filter: " << left_filter->GetAeRight().operand.constant.ToString() << "right_filter: " << right_filter->GetAeRight().operand.constant.ToString();
             }
-            else if (edge_filter_->Type() == lgraph::Filter::Type::LABEL_FILTER){
-                FMA_LOG() << "edge_filter_ is a LABEL_FILTER filter";
-            }
-            else if (edge_filter_->Type() == lgraph::Filter::Type::STRING_FILTER){
-                FMA_LOG() << "edge_filter_ is a STRING_FILTER filter";
-            }
-            else if (edge_filter_->Type() == lgraph::Filter::Type::GEAX_EXPR_FILTER){
-                FMA_LOG() << "edge_filter_ is a GEAX_EXPR_FILTER filter";
-            }
-
         }
         CYPHER_THROW_ASSERT(!children.empty());
         auto child = children[0];

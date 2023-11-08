@@ -5,9 +5,8 @@ import asyncio
 import base64
 import logging
 import warnings
-from functools import partial
 import httpx
-
+from functools import partial
 
 requests = httpx.AsyncClient()
 warnings.simplefilter("ignore", UserWarning)

@@ -290,7 +290,7 @@ class KeyPacker {
         // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF, euid.dst);
         // SetNByteIntId<::lgraph::_detail::EID_SIZE>(v.Data() + EID_OFF, euid.eid);
         // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + VER_OFF, euid.verid);
-        FMA_LOG() << "[CreateEdgeKeyVersion] src: " << euid.src << " dst: " << euid.dst << " ver: " << euid.verid;
+        // FMA_LOG() << "[CreateEdgeKeyVersion] src: " << euid.src << " dst: " << euid.dst << " ver: " << euid.verid;
         // SetNByteIntId<::lgraph::_detail::LID_SIZE>(v.Data() + LID_OFF+::lgraph::_detail::VID_SIZE, euid.lid);
         // SetNByteIntId<::lgraph::_detail::TID_SIZE>(v.Data() + TID_OFF+::lgraph::_detail::VID_SIZE, euid.tid);
         // SetNByteIntId<::lgraph::_detail::VID_SIZE>(v.Data() + SID_OFF+::lgraph::_detail::VID_SIZE, euid.dst);
@@ -1044,7 +1044,7 @@ class EdgeValue {
             size_t prop_size;
             ParseNthEdge(p, ll, pp, vv, ee, prop, prop_size);
             int cmp;
-            FMA_LOG() << "  beg:" <<  beg << ", vid: " << vv << ", target_vid: " << vid << ", lid: " << ll << ", tid: " << pp<< ", eid: " << ee;
+            // FMA_LOG() << "  beg:" <<  beg << ", vid: " << vv << ", target_vid: " << vid << ", lid: " << ll << ", tid: " << pp<< ", eid: " << ee;
             // compare (lid, vid, eid)
             if (lid < ll)
                 cmp = -1;
@@ -1063,7 +1063,7 @@ class EdgeValue {
             // binary search
             if (cmp == 0) {
                 found = true;
-                FMA_LOG() << "index of edge: " << p;
+                // FMA_LOG() << "index of edge: " << p;
                 return p;
             } else if (cmp == -1) {
                 end = p;
@@ -1091,7 +1091,7 @@ class EdgeValue {
             size_t prop_size;
             ParseNthEdgeVersion(p, ll, pp, vv, ee, vversion_, prop, prop_size);
             int cmp;
-            FMA_LOG() << "  beg:" <<  beg << ", vid: " << vv << ", target_vid: " << vid << ", lid: " << ll << ", tid: " << pp<< ", eid: " << ee << ", version: " << version;
+            // FMA_LOG() << "  beg:" <<  beg << ", vid: " << vv << ", target_vid: " << vid << ", lid: " << ll << ", tid: " << pp<< ", eid: " << ee << ", version: " << version;
             // compare (lid, vid, eid)
             if(version < vversion_)
                 cmp = -1;

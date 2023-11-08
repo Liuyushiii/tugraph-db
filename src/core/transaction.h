@@ -160,7 +160,8 @@ class Transaction {
 
     OutEdgeIterator GetOutEdgeIteratorVersion(VertexId src, VertexId versionl, VertexId versionr) {
         _detail::CheckVid(src);
-        auto oei = graph_->GetOutEdgeIterator(this, EdgeUid(src, 0, 0, 0, 0), true);
+        // auto oei = graph_->GetOutEdgeIterator(this, EdgeUid(src, 0, 0, 0, 0), true);
+        auto oei = graph_->GetOutEdgeIterator(this, EdgeUid(src, 0, 0, 0, 0, versionr), true);
         oei.impl_.SetVersionl(versionl);
         oei.impl_.SetVersionr(versionr);
         return oei;

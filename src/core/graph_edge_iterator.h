@@ -402,7 +402,7 @@ class EdgeIteratorImpl {
 
     // new append
     bool GotoVersion(VertexId vid1, LabelId lid, TemporalId tid, VertexId vid2, EdgeId eid, bool closest,VertexId verid) {
-        FMA_LOG() << "Goto in graph_edge_iterator: " << vid1 << ", "<< lid << ", "<< tid << ", "<< vid2 << ", "<< eid << ", " << verid;
+        // FMA_LOG() << "Goto in graph_edge_iterator: " << vid1 << ", "<< lid << ", "<< tid << ", "<< vid2 << ", "<< eid << ", " << verid;
         valid_ = false;
         vid1_ = vid1;
         lid_ = lid;
@@ -419,20 +419,20 @@ class EdgeIteratorImpl {
         if (KeyPacker::GetFirstVid(k) != vid1_) return false;  // no such vertex
         // now we are sure the vertex exist, check whether it is a packed vertex
         PackType pt = KeyPacker::GetNodeType(k);
-        FMA_LOG() << "PackType is : " << pt;
+        // FMA_LOG() << "PackType is : " << pt;
         // 如果该key存在，则 pt 应该为 VERTEX_ONLY
         if (pt == PackType::VERTEX_ONLY) {
             // 如果其余各参数均为0（通常是迭代器初始化的时候），则让 it_ 指向第一条边
             if (lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0 &&
                 ET == PackType::OUT_EDGE) {  // get the first one
                 // r = it_->Next();
-                FMA_LOG() << "lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0";
+                // FMA_LOG() << "lid_ == 0 && tid_ == 0 && vid2_ == 0 && eid_ == 0";
                 r = it_->GotoClosestKey(
                     KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_,version_)));
             } else {
                 // 否在将 vid1_, vid2_, lid_, tid_, eid_ 编码为 key，指向与 key 最接近的第一条边
-                FMA_LOG() << "lid_ != 0 || tid_ != 0 || vid2_ != 0 || eid_ != 0";
-                FMA_LOG() << "vid2: " << vid2_;
+                // FMA_LOG() << "lid_ != 0 || tid_ != 0 || vid2_ != 0 || eid_ != 0";
+                // FMA_LOG() << "vid2: " << vid2_;
                 r = it_->GotoClosestKey(
                     KeyPacker::CreateEdgeKeyVersion(ET, EdgeUid(vid1_, vid2_, lid_, tid_, eid_, version_)));
                 // r = it_->GotoClosestKey(
@@ -440,7 +440,7 @@ class EdgeIteratorImpl {
             }
             if (!r) return false;  // searched till end of db, no such edge
             pt = KeyPacker::GetNodeType(it_->GetKey());
-            FMA_LOG() << "pt after: " << pt;
+            // FMA_LOG() << "pt after: " << pt;
             if (pt != ET) return false;
         }
         LoadContentFromItVersion(closest);
