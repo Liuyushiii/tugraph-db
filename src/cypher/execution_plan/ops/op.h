@@ -90,6 +90,11 @@ struct OpBase {
         OP_OK = 4,
         OP_ERR = 8,
     };
+    int hop;  // Number of hops from root.
+
+    void set_hop(int h) { hop = h; }
+
+    int get_hop(){ return hop; }
 
     OpBase() = default;
 

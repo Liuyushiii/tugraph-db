@@ -546,6 +546,7 @@ void ExecutionPlan::_BuildExpandOps(const parser::QueryPart &part, PatternGraph 
     for (auto &stream : expand_streams) {
         std::vector<OpBase *> expand_ops;
         bool hanging = false;  // if the stream is a hanging node
+        int hop = 1;
         for (auto &step : stream) {
             auto &start = pattern_graph.GetNode(std::get<0>(step));
             auto &relp = pattern_graph.GetRelationship(std::get<1>(step));
@@ -570,9 +571,13 @@ void ExecutionPlan::_BuildExpandOps(const parser::QueryPart &part, PatternGraph 
             } else if (relp.VarLen()) {
                 // 邻居不为空，进行expand
                 OpBase *expand_op = new VarLenExpand(&pattern_graph, &start, &neighbor, &relp);
+                FMA_LOG() << "create VarLenExpand op";
                 expand_ops.emplace_back(expand_op);
             } else {
                 OpBase *expand_op = new ExpandAll(&pattern_graph, &start, &neighbor, &relp);
+                expand_op->set_hop(hop);
+                hop++;
+                FMA_LOG() << "create ExpandAll op: " << expand_op->get_hop();
                 expand_ops.emplace_back(expand_op);
             }
             // add property filter op
@@ -1065,6 +1070,7 @@ OpBase *ExecutionPlan::BuildPart(const parser::QueryPart &part, int part_id) {
     _BuildArgument(part, pattern_graph, segment_root);
     for (auto &clause : part.clauses) {
         _BuildClause(clause, part, pattern_graph, segment_root);
+        FMA_LOG() << "  segment_root: " << segment_root->ToString();
     }
 
     // 根据Where构造并插入过滤器
@@ -1203,11 +1209,14 @@ bool ExecutionPlan::_WorkWithoutTransaction(const parser::SglQuery &stmt) const 
 OpBase *ExecutionPlan::BuildSgl(const parser::SglQuery &stmt, size_t parts_offset) {
     OpBase *sgl_root = nullptr;
     std::vector<OpBase *> segments;
+    FMA_LOG() << "======================";
     for (int i = 0; i < (int)stmt.parts.size(); i++) {
         // 对每个SglQuery的每个part调用BuildPart
         auto segment = BuildPart(stmt.parts[i], parts_offset + i);
+        FMA_LOG() << "segment: " << segment->name;
         segments.emplace_back(segment);
     }
+    FMA_LOG() << "======================";
 #ifndef NDEBUG
     FMA_DBG() << "Plan parts:";
     std::string s;

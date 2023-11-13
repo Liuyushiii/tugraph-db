@@ -62,6 +62,8 @@ class RTContext : public SubmitQueryContext {
     std::unique_ptr<lgraph_api::Transaction> txn_ = nullptr;
     std::unique_ptr<ResultInfo> result_info_ = nullptr;
     std::unique_ptr<lgraph_api::Result> result_ = nullptr;
+    // std::unique_ptr<int> test_data = 1;
+    std::unique_ptr<std::map<lgraph::VertexId, int8_t>> visit_map = std::make_unique<std::map<lgraph::VertexId, int8_t>>();
 
     RTContext() = default;
 
@@ -69,6 +71,28 @@ class RTContext : public SubmitQueryContext {
               const std::string &user, const std::string &graph,
               const lgraph::AclManager::FieldAccess& field_access)
         : SubmitQueryContext(sm, galaxy, token, user, graph, field_access) {}
+
+    void InsertMap(lgraph::VertexId vid, int value) {
+        // set (value - 1)th bit to 1
+        (*visit_map)[vid] |= (1 << (value - 1));
+    }
+
+    bool NeedVisit(lgraph::VertexId vid, int value) {
+        // check is vid exists in visit_map
+        if (visit_map->find(vid) == visit_map->end()) {
+            // set all the bits to zero
+            (*visit_map)[vid] = 0;
+            InsertMap(vid, value);
+            return true;
+        }
+        // check if (value - 1)th bit is 1. if so, return false; else call InsertMap and return true
+        if (((*visit_map)[vid] >> (value - 1)) & 1) {
+            return false;
+        } else {
+            InsertMap(vid, value);
+            return true;
+        }
+    }
 
     bool Check(std::string &msg) const {
         if (!SubmitQueryContext::Check(msg)) return false;

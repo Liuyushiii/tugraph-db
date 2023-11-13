@@ -107,11 +107,12 @@ class ExpandAll : public OpBase {
     OpResult Next(RTContext *ctx) {
         // FMA_LOG() << "NEXT() in op_expand_all start";
         // Reset iterators
+        // FMA_LOG() << "vid in Next: " << start_->PullVid();
         if (state_ == ExpandAllResetted) {
             /* Start node iterator may be invalid, such as when the start is an argument
              * produced by OPTIONAL MATCH.  */
             // FMA_LOG() << "vid in op_expand_all: " << start_->PullVid();
-            if (start_->PullVid() < 0) 
+            if (start_->PullVid() < 0 || ctx->NeedVisit(start_->PullVid(), this->get_hop()) == false) 
             {
                 return OP_REFRESH;
             }
